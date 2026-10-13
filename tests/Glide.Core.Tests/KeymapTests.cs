@@ -131,4 +131,31 @@ public class KeymapTests
         Assert.True(IsWarning(ShortcutPolicy.Evaluate(new KeyCombo(KeyCode.Tab, KeyModifiers.Alt))));
         Assert.True(ShortcutPolicy.Evaluate(new KeyCombo(KeyCode.LeftArrow, KeyModifiers.Win)) is ShortcutPolicy.Verdict.Ok);
     }
+
+    [Fact]
+    public void ParsesShortcutsAsPeopleWriteThem()
+    {
+        Assert.Equal(new KeyCombo(KeyCode.LeftArrow, KeyModifiers.Win | KeyModifiers.Shift), KeyCombo.Parse("Win+Shift+Left"));
+        Assert.Equal(new KeyCombo(KeyCode.R, KeyModifiers.Win | KeyModifiers.Control), KeyCombo.Parse("ctrl + win + r"));
+        Assert.Equal(new KeyCombo(KeyCode.LeftBracket, KeyModifiers.Win), KeyCombo.Parse("Win+["));
+        Assert.Equal(new KeyCombo(KeyCode.F1 + 4, KeyModifiers.Alt), KeyCombo.Parse("Alt+F5"));
+        Assert.Equal(new KeyCombo(KeyCode.PageDown, KeyModifiers.Win), KeyCombo.Parse("Win+PgDn"));
+        Assert.Equal(new KeyCombo(KeyCode.LeftArrow, KeyModifiers.Win | KeyModifiers.Control), KeyCombo.Parse("9:37"));
+        Assert.Null(KeyCombo.Parse("Hyper+R"));
+        Assert.Null(KeyCombo.Parse("Win+"));
+        foreach (var combo in Keymap.Defaults.Values)
+            Assert.Equal(combo, KeyCombo.Parse(combo.ToString())); // Display names read back
+    }
+
+    [Fact]
+    public void ShortcutsFollowPhysicalKeyPositions()
+    {
+        // On a Spanish layout the key right of P is VK_OEM_1 ("`"); it still means Win+[.
+        Assert.Equal(KeyCode.LeftBracket, KeyCode.ByPosition(0xBA, scanCode: 0x1A, extended: false));
+        // AZERTY's A key sits where US has Q.
+        Assert.Equal('Q', (char)KeyCode.ByPosition('A', scanCode: 0x10, extended: false));
+        Assert.Equal('1', (char)KeyCode.ByPosition('1', scanCode: 0x02, extended: false));
+        // Arrows are extended keys and keep their code.
+        Assert.Equal(KeyCode.LeftArrow, KeyCode.ByPosition(KeyCode.LeftArrow, scanCode: 0x4B, extended: true));
+    }
 }
