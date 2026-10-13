@@ -2,7 +2,7 @@
 
 A keyboard-first scrolling window manager for Windows 11, the Windows counterpart of [Glide for macOS](https://github.com/QuackByte/glide). Windows are columns on an endless horizontal strip that you glide through with the keyboard, in the style of niri and PaperWM.
 
-Status: early. Tiling, workspaces and the Win-key shortcuts work; settings UI, focus ring, tab bars, overview and trackpad swipes are still to come. See [PLAN.md](PLAN.md).
+Status: early. Tiling, workspaces, the Win-key shortcuts, the settings window and the focus ring work; tab bars, the overview and trackpad swipes are still to come. See [PLAN.md](PLAN.md).
 
 ## Shortcuts
 
@@ -32,12 +32,24 @@ Shortcuts follow key positions, like on macOS: Win+[ is the key right of P on an
 
 ### Rebinding
 
-Until the settings window exists, edit `%APPDATA%\Glide\settings.json` (tray menu → Open Settings File), then choose Reload Settings:
+Open Settings from the tray menu, or launch Glide again from the Start menu while it runs. Under Shortcuts, click a shortcut and press the keys you want: any combo works, Win combos included. Esc cancels and Backspace removes it. Glide refuses combos that can't work (Win+L, which Windows handles before any app), warns about ones that shadow text editing, and tells you when a combo moves from another action.
+
+## Settings
+
+- **General**: turn tiling on or off, start at sign-in, the gap between windows, the slide animation, and the focus ring and its color.
+- **Take over Windows shortcuts**: turn this off to give Windows back the combos Glide replaces, like FancyZones' "Override Windows Snap". Glide then only gets the shortcuts that don't clash.
+- **App rules**: per app, always float, always tile or decide automatically, plus a column width and a workspace for new windows. Rules apply to open windows right away; a window you floated or tiled by hand with Win+Ctrl+V keeps your choice.
+- **Restart as administrator**: Windows doesn't let a normal app move the windows of apps running as administrator, nor see keys while one is focused. Restart Glide as administrator from General to manage them too.
+
+Everything is stored in `%APPDATA%\Glide\settings.json` and applies as you change it. The file can also be edited by hand; Glide picks up the changes when it's saved:
 
 ```json
 {
   "gap": 12,
   "animate": true,
+  "focusRing": true,
+  "focusRingColor": "accent",
+  "overrideWindowsShortcuts": true,
   "shortcuts": {
     "FocusColumnLeft": "Win+J",
     "FocusColumnRight": "Win+K",
@@ -50,7 +62,7 @@ Until the settings window exists, edit `%APPDATA%\Glide\settings.json` (tray men
 }
 ```
 
-Action names are those in [`Action.cs`](src/Glide.Core/Action.cs). Binding a combo that another action uses unbinds the other one. Win+L can't be taken: Windows locks the PC before any app sees it. `mode` is `Automatic`, `Float` or `Tile`; `widthIndex` picks ⅓, ½, ⅔ or full (0–3); `workspace` is zero-based.
+Action names are those in [`Action.cs`](src/Glide.Core/Action.cs). `focusRingColor` is `accent` or `#RRGGBB`. In rules, `mode` is `Automatic`, `Float` or `Tile`, `widthIndex` picks ⅓, ½, ⅔ or full (0–3), and `workspace` is zero-based.
 
 ## How it behaves
 
@@ -59,6 +71,7 @@ Action names are those in [`Action.cs`](src/Glide.Core/Action.cs). Binding a com
 - Off-screen columns wait as thin slivers at the screen edges; windows of other workspaces and inactive tabs wait in the bottom-right corner.
 - Resizing a window with the mouse gives its column that width; dragging one snaps it back into place.
 - Turning tiling off (Win+Ctrl+Shift+T or the tray menu) or quitting puts every window back on screen, including those on other workspaces. The layout is saved and comes back when tiling is turned on again, until Windows restarts.
+- The focused tiled window gets a colored border (Windows 11).
 - The tray icon shows the active workspace; click it for the menu. `Glide.exe --quit` quits a running Glide.
 
 ## Build and run
