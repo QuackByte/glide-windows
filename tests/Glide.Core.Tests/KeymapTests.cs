@@ -1,0 +1,134 @@
+namespace Glide.Core.Tests;
+
+public class KeymapTests
+{
+    private static bool IsRejected(ShortcutPolicy.Verdict verdict) => verdict is ShortcutPolicy.Verdict.Rejected;
+    private static bool IsWarning(ShortcutPolicy.Verdict verdict) => verdict is ShortcutPolicy.Verdict.Warning;
+
+    [Fact]
+    public void EveryActionHasADefault()
+    {
+        foreach (var action in GlideActions.All)
+            Assert.True(Keymap.Defaults.ContainsKey(action), $"{action} has no default shortcut");
+    }
+
+    [Fact]
+    public void DefaultsAreUnique()
+    {
+        var combos = Keymap.Defaults.Values.ToList();
+        Assert.Equal(combos.Count, combos.Distinct().Count());
+    }
+
+    [Fact]
+    public void DefaultsPassShortcutPolicy()
+    {
+        foreach (var (action, combo) in Keymap.Defaults)
+            Assert.True(ShortcutPolicy.Evaluate(combo) is ShortcutPolicy.Verdict.Ok, $"{action} default {combo} is flagged");
+    }
+
+    [Fact]
+    public void DefaultsAvoidTextEditingCombos()
+    {
+        foreach (var combo in Keymap.Defaults.Values.Where(c => KeyCode.Arrows.Contains(c.KeyCode)))
+        {
+            var primary = combo.Modifiers & ~KeyModifiers.Shift;
+            Assert.NotEqual(KeyModifiers.Alt, primary);
+            Assert.NotEqual(KeyModifiers.Control, primary);
+            Assert.NotEqual(KeyModifiers.Control | KeyModifiers.Alt, primary);
+        }
+    }
+
+    [Fact]
+    public void DefaultDisplayNames()
+    {
+        Assert.Equal("Win+←", Keymap.Defaults[GlideAction.FocusColumnLeft].ToString());
+        Assert.Equal("Win+Shift+→", Keymap.Defaults[GlideAction.MoveColumnRight].ToString());
+        Assert.Equal("Win+[", Keymap.Defaults[GlideAction.ConsumeOrExpelLeft].ToString());
+        Assert.Equal("Win+Ctrl+Shift+T", Keymap.Defaults[GlideAction.ToggleTiling].ToString());
+    }
+
+    [Fact]
+    public void OverrideAndReset()
+    {
+        var keymap = new Keymap();
+        var combo = new KeyCombo('H', KeyModifiers.Win | KeyModifiers.Alt);
+        keymap.Set(combo, GlideAction.FocusColumnLeft);
+        Assert.Equal(combo, keymap.Combo(GlideAction.FocusColumnLeft));
+        Assert.Equal(GlideAction.FocusColumnLeft, keymap.Action(combo));
+        keymap.Reset(GlideAction.FocusColumnLeft);
+        Assert.Equal(Keymap.Defaults[GlideAction.FocusColumnLeft], keymap.Combo(GlideAction.FocusColumnLeft));
+        Assert.Empty(keymap.Overrides);
+    }
+
+    [Fact]
+    public void Unbinding()
+    {
+        var keymap = new Keymap();
+        keymap.Set(null, GlideAction.CenterColumn);
+        Assert.Null(keymap.Combo(GlideAction.CenterColumn));
+        Assert.DoesNotContain(keymap.Bindings, b => b.Action == GlideAction.CenterColumn);
+    }
+
+    [Fact]
+    public void BindingDuplicateDisplacesOtherAction()
+    {
+        var keymap = new Keymap();
+        var displaced = keymap.Set(Keymap.Defaults[GlideAction.FocusColumnRight], GlideAction.FocusColumnLeft);
+        Assert.Equal([GlideAction.FocusColumnRight], displaced);
+        Assert.Null(keymap.Combo(GlideAction.FocusColumnRight));
+        Assert.Equal(GlideAction.FocusColumnLeft, keymap.Action(Keymap.Defaults[GlideAction.FocusColumnRight]));
+    }
+
+    [Fact]
+    public void ResetDisplacesActionHoldingTheDefault()
+    {
+        var keymap = new Keymap();
+        keymap.Set(new KeyCombo('H', KeyModifiers.Win | KeyModifiers.Alt), GlideAction.FocusColumnLeft);
+        keymap.Set(Keymap.Defaults[GlideAction.FocusColumnLeft], GlideAction.CenterColumn);
+        keymap.Reset(GlideAction.FocusColumnLeft);
+        Assert.Equal(Keymap.Defaults[GlideAction.FocusColumnLeft], keymap.Combo(GlideAction.FocusColumnLeft));
+        Assert.Null(keymap.Combo(GlideAction.CenterColumn));
+    }
+
+    [Fact]
+    public void StorageRoundTrip()
+    {
+        var keymap = new Keymap();
+        keymap.Set(new KeyCombo('H', KeyModifiers.Win | KeyModifiers.Alt | KeyModifiers.Control), GlideAction.FocusColumnLeft);
+        keymap.Set(null, GlideAction.ToggleTiling);
+        var restored = Keymap.FromStorage(keymap.Storage);
+        Assert.Equal(keymap, restored);
+        Assert.Equal(new KeyCombo('H', KeyModifiers.Win | KeyModifiers.Alt | KeyModifiers.Control), restored.Combo(GlideAction.FocusColumnLeft));
+        Assert.Null(restored.Combo(GlideAction.ToggleTiling));
+    }
+
+    [Fact]
+    public void StorageIgnoresUnknownAndMalformedEntries()
+    {
+        var keymap = Keymap.FromStorage(new Dictionary<string, string> { ["notAnAction"] = "3:4", ["CenterColumn"] = "garbage", ["42"] = "8:37" });
+        Assert.Equal(new Keymap(), keymap);
+    }
+
+    [Fact]
+    public void ModifierStorageBitsAreStable()
+    {
+        // Persisted in settings files, so the bit values must never change.
+        Assert.Equal("9:37", new KeyCombo(KeyCode.LeftArrow, KeyModifiers.Win | KeyModifiers.Control).StorageValue);
+        Assert.Equal("6:72", new KeyCombo('H', KeyModifiers.Alt | KeyModifiers.Shift).StorageValue);
+        Assert.Equal(new KeyCombo(KeyCode.LeftArrow, KeyModifiers.Win | KeyModifiers.Control), KeyCombo.FromStorage("9:37"));
+    }
+
+    [Fact]
+    public void Policy()
+    {
+        Assert.True(IsRejected(ShortcutPolicy.Evaluate(new KeyCombo('A', KeyModifiers.None))));
+        Assert.True(IsRejected(ShortcutPolicy.Evaluate(new KeyCombo('A', KeyModifiers.Shift))));
+        Assert.True(ShortcutPolicy.Evaluate(new KeyCombo(KeyCode.F1, KeyModifiers.None)) is ShortcutPolicy.Verdict.Ok); // Bare F1 is allowed
+        Assert.True(IsRejected(ShortcutPolicy.Evaluate(new KeyCombo(KeyCode.L, KeyModifiers.Win))), "Win+L locks the PC");
+        Assert.True(IsWarning(ShortcutPolicy.Evaluate(new KeyCombo(KeyCode.LeftArrow, KeyModifiers.Control))));
+        Assert.True(IsWarning(ShortcutPolicy.Evaluate(new KeyCombo(KeyCode.LeftArrow, KeyModifiers.Control | KeyModifiers.Shift))));
+        Assert.True(IsWarning(ShortcutPolicy.Evaluate(new KeyCombo(KeyCode.RightArrow, KeyModifiers.Alt))));
+        Assert.True(IsWarning(ShortcutPolicy.Evaluate(new KeyCombo(KeyCode.Tab, KeyModifiers.Alt))));
+        Assert.True(ShortcutPolicy.Evaluate(new KeyCombo(KeyCode.LeftArrow, KeyModifiers.Win)) is ShortcutPolicy.Verdict.Ok);
+    }
+}
