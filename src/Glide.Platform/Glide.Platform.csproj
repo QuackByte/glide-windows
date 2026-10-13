@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Everything that talks to Win32 and DWM: window tracking, layout, the keyboard hook, the tray icon. -->
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <RootNamespace>Glide.Platform</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <!-- A few structs (NOTIFYICONDATA) depend on the architecture. x64 and ARM64 share their layout,
+         so AnyCPU builds of this library use the 64-bit one. Glide only ships for x64 and ARM64. -->
+    <CsWin32PlatformTarget Condition="'$(PlatformTarget)' == '' or '$(PlatformTarget)' == 'AnyCPU'">x64</CsWin32PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.360" PrivateAssets="all" />
+    <ProjectReference Include="../Glide.Core/Glide.Core.csproj" />
+  </ItemGroup>
+</Project>
