@@ -44,10 +44,12 @@ public sealed class Settings
                 }
                 if (value.Equals("none", StringComparison.OrdinalIgnoreCase) || value.Length == 0)
                     keymap.Set(null, action);
-                else if (KeyCombo.Parse(value) is { } combo)
-                    keymap.Set(combo, action);
-                else
+                else if (KeyCombo.Parse(value) is not { } combo)
                     Log.Info($"Settings: can't read shortcut \"{value}\" for {name}");
+                else if (ShortcutPolicy.Evaluate(combo) is ShortcutPolicy.Verdict.Rejected(var reason))
+                    Log.Info($"Settings: {combo} can't be used for {name}: {reason}");
+                else
+                    keymap.Set(combo, action);
             }
             return keymap;
         }
