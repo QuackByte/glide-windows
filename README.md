@@ -73,6 +73,16 @@ src\Glide\bin\ARM64\Debug\net9.0-windows10.0.19041.0\win-arm64\Glide.exe
 dotnet publish src\Glide\Glide.csproj -c Release -p:Platform=x64 -o publish
 ```
 
+### Installer
+
+`installer\build.ps1` publishes a Release build and wraps it with [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`winget install JRSoftware.InnoSetup`):
+
+```powershell
+installer\build.ps1 -Platform ARM64   # or x64; writes artifacts\Glide-0.1.0-arm64-Setup.exe
+```
+
+The installer is per-user (no administrator rights) and installs to `%LOCALAPPDATA%\Programs\Glide`. It adds a Start menu entry and, optionally, starts Glide at sign-in. Upgrading or uninstalling first asks a running Glide to put its windows back and quit. Silent install: `Setup.exe /VERYSILENT /TASKS=startup`.
+
 Logs go to `%LOCALAPPDATA%\Glide\glide.log`; set `GLIDE_VERBOSE=1` for every action and window event.
 
 The engine and its tests are plain .NET and build anywhere, macOS included:
