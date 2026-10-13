@@ -158,4 +158,15 @@ public class KeymapTests
         // Arrows are extended keys and keep their code.
         Assert.Equal(KeyCode.LeftArrow, KeyCode.ByPosition(KeyCode.LeftArrow, scanCode: 0x4B, extended: true));
     }
+
+    [Fact]
+    public void KnowsWhichDefaultsTakeOverWindowsFeatures()
+    {
+        Assert.Equal("Snap left or right", ShortcutPolicy.ReplacedWindowsFeature(Keymap.Defaults[GlideAction.FocusColumnLeft]));
+        Assert.Equal("Task View", ShortcutPolicy.ReplacedWindowsFeature(Keymap.Defaults[GlideAction.ToggleOverview]));
+        Assert.Equal("Switch virtual desktop", ShortcutPolicy.ReplacedWindowsFeature(Keymap.Defaults[GlideAction.FocusNextWorkspace]));
+        Assert.Null(ShortcutPolicy.ReplacedWindowsFeature(Keymap.Defaults[GlideAction.ConsumeOrExpelLeft]));
+        Assert.Null(ShortcutPolicy.ReplacedWindowsFeature(Keymap.Defaults[GlideAction.ToggleTiling]));
+        Assert.Null(ShortcutPolicy.ReplacedWindowsFeature(new KeyCombo(KeyCode.LeftArrow, KeyModifiers.Alt)));
+    }
 }

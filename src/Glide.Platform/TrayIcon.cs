@@ -13,7 +13,7 @@ internal sealed unsafe class TrayIcon : IDisposable
 {
     private const uint CallbackMessage = Win32.WM_APP + 1;
     private const uint IconId = 1;
-    private const nuint ToggleCommand = 1, OpenSettingsCommand = 2, ReloadSettingsCommand = 3, QuitCommand = 4;
+    private const nuint ToggleCommand = 1, SettingsCommand = 2, QuitCommand = 4;
 
     private readonly MessageWindow window;
     private readonly uint taskbarCreated = PInvoke.RegisterWindowMessage("TaskbarCreated");
@@ -29,8 +29,7 @@ internal sealed unsafe class TrayIcon : IDisposable
     }
 
     public event Action? ToggleRequested;
-    public event Action? OpenSettingsRequested;
-    public event Action? ReloadSettingsRequested;
+    public event Action? SettingsRequested;
     public event Action? QuitRequested;
 
     /// <summary>The toggle's shortcut, shown in the menu.</summary>
@@ -65,8 +64,7 @@ internal sealed unsafe class TrayIcon : IDisposable
             switch (wParam.Value & 0xFFFF)
             {
                 case ToggleCommand: ToggleRequested?.Invoke(); break;
-                case OpenSettingsCommand: OpenSettingsRequested?.Invoke(); break;
-                case ReloadSettingsCommand: ReloadSettingsRequested?.Invoke(); break;
+                case SettingsCommand: SettingsRequested?.Invoke(); break;
                 case QuitCommand: QuitRequested?.Invoke(); break;
                 default: return false;
             }
@@ -88,8 +86,7 @@ internal sealed unsafe class TrayIcon : IDisposable
             Append(menu, MENU_ITEM_FLAGS.MF_STRING | MENU_ITEM_FLAGS.MF_GRAYED, 0, $"Glide · Workspace {workspace}");
             Append(menu, MENU_ITEM_FLAGS.MF_SEPARATOR, 0, null);
             Append(menu, MENU_ITEM_FLAGS.MF_STRING | (enabled ? MENU_ITEM_FLAGS.MF_CHECKED : 0), ToggleCommand, $"Tiling{shortcut}");
-            Append(menu, MENU_ITEM_FLAGS.MF_STRING, OpenSettingsCommand, "Open Settings File");
-            Append(menu, MENU_ITEM_FLAGS.MF_STRING, ReloadSettingsCommand, "Reload Settings");
+            Append(menu, MENU_ITEM_FLAGS.MF_STRING, SettingsCommand, "Settings…");
             Append(menu, MENU_ITEM_FLAGS.MF_SEPARATOR, 0, null);
             Append(menu, MENU_ITEM_FLAGS.MF_STRING, QuitCommand, "Quit Glide");
 

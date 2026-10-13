@@ -31,6 +31,17 @@ internal sealed unsafe class KeyboardHook(Action<GlideAction> onAction) : IDispo
     /// <summary>A combo with Win fired since Win went down, so releasing Win must not open Start.</summary>
     private bool maskPending;
 
+    /// <summary>While set, the next combo goes here (on the hook thread) instead of triggering anything.</summary>
+    private volatile Action<KeyCombo>? recorder;
+
+    /// <summary>
+    /// Captures the next key combo, Win combos included, for the shortcut recorder. The key is
+    /// swallowed. <paramref name="onCombo"/> runs on the hook's thread and must return quickly.
+    /// </summary>
+    public void Record(Action<KeyCombo> onCombo) => recorder = onCombo;
+
+    public void CancelRecording() => recorder = null;
+
     /// <summary>Replaces the combos the hook swallows. Safe from any thread.</summary>
     public void SetBindings(IEnumerable<(KeyCombo Combo, GlideAction Action)> combos) =>
         bindings = combos.DistinctBy(b => b.Combo).ToFrozenDictionary(b => b.Combo, b => b.Action);
@@ -103,6 +114,14 @@ internal sealed unsafe class KeyboardHook(Action<GlideAction> onAction) : IDispo
         if (down)
         {
             var combo = new KeyCombo(key, CurrentModifiers());
+            if (recorder is { } record)
+            {
+                recorder = null;
+                swallowedKeys.Add(key);
+                if (combo.Modifiers.HasFlag(KeyModifiers.Win)) maskPending = true;
+                record(combo);
+                return (LRESULT)1;
+            }
             if (bindings.TryGetValue(combo, out var action))
             {
                 swallowedKeys.Add(key);

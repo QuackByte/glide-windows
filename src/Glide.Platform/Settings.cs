@@ -19,12 +19,23 @@ public sealed class Settings
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
         Converters = { new JsonStringEnumConverter() },
+        // Keep "Win+←" readable in a file people edit by hand.
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
     /// <summary>Space between columns and around the screen edge, in pixels at 100% scaling.</summary>
     public double Gap { get; set; } = 12;
     /// <summary>Slide windows into place instead of jumping.</summary>
     public bool Animate { get; set; } = true;
+    /// <summary>Colors the focused tiled window's border (Windows 11).</summary>
+    public bool FocusRing { get; set; } = true;
+    /// <summary>"accent" for the Windows accent color, or "#RRGGBB".</summary>
+    public string FocusRingColor { get; set; } = "accent";
+    /// <summary>
+    /// Whether Glide's shortcuts may take over combos Windows uses (Snap, Task View, virtual
+    /// desktops…). Off gives those back to Windows, like FancyZones' "Override Windows Snap".
+    /// </summary>
+    public bool OverrideWindowsShortcuts { get; set; } = true;
     /// <summary>Overrides of the default shortcuts, by action name. "none" removes one.</summary>
     public Dictionary<string, string> Shortcuts { get; set; } = [];
     public List<AppRule> Rules { get; set; } = [.. AppRule.Defaults];
@@ -53,6 +64,22 @@ public sealed class Settings
             }
             return keymap;
         }
+    }
+
+    /// <summary>Stores a keymap's overrides as readable shortcuts ("Win+J", "none").</summary>
+    public void SetKeymap(Keymap keymap) =>
+        Shortcuts = keymap.Overrides.ToDictionary(p => p.Key.ToString(), p => p.Value?.ToString() ?? "none");
+
+    public string ToJson() => JsonSerializer.Serialize(this, json);
+
+    public Settings Clone() => JsonSerializer.Deserialize<Settings>(JsonSerializer.Serialize(this, json), json)!;
+
+    public void Save()
+    {
+        System.IO.Directory.CreateDirectory(Directory);
+        var temporary = FilePath + ".tmp";
+        File.WriteAllText(temporary, JsonSerializer.Serialize(this, json));
+        File.Move(temporary, FilePath, overwrite: true);
     }
 
     public static Settings Load()

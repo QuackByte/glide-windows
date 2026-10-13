@@ -13,6 +13,8 @@ internal sealed unsafe class MessageWindow : IDisposable
     public const string ClassName = "GlideMessageWindow";
     /// <summary>Asks the running Glide to quit (sent by <c>Glide.exe --quit</c>).</summary>
     public const uint QuitMessage = Win32.WM_APP + 2;
+    /// <summary>Asks the running Glide to show its settings (sent when Glide is launched again).</summary>
+    public const uint ShowSettingsMessage = Win32.WM_APP + 3;
     private readonly WNDPROC procedure;
     private readonly Dictionary<nuint, Action> timers = [];
 

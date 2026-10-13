@@ -154,6 +154,34 @@ public static class ShortcutPolicy
         public sealed record Rejected(string Message) : Verdict;
     }
 
+    /// <summary>
+    /// The Windows feature a combo takes over, if any: what Windows does with it when Glide
+    /// doesn't swallow it. Glide can give these back (Settings › General).
+    /// </summary>
+    public static string? ReplacedWindowsFeature(KeyCombo combo)
+    {
+        const KeyModifiers win = KeyModifiers.Win, shift = KeyModifiers.Shift, ctrl = KeyModifiers.Control;
+        var key = combo.KeyCode;
+        return combo.Modifiers switch
+        {
+            win when key is KeyCode.LeftArrow or KeyCode.RightArrow => "Snap left or right",
+            win when key == KeyCode.UpArrow => "Maximize",
+            win when key == KeyCode.DownArrow => "Restore or minimize",
+            win when key == KeyCode.Home => "Minimize other windows",
+            win when key == KeyCode.Tab => "Task View",
+            win when KeyCode.Digits.Contains(key) => "Open the taskbar app in that position",
+            win | shift when key is KeyCode.LeftArrow or KeyCode.RightArrow => "Move the window to another monitor",
+            win | shift when key is KeyCode.UpArrow or KeyCode.DownArrow => "Stretch the window vertically",
+            win | shift when KeyCode.Digits.Contains(key) => "Open another instance of the taskbar app",
+            win | ctrl when key is KeyCode.LeftArrow or KeyCode.RightArrow => "Switch virtual desktop",
+            win | ctrl when key == KeyCode.D => "New virtual desktop",
+            win | ctrl when key == KeyCode.F => "Find computers",
+            win | ctrl when key == KeyCode.C => "Color filters",
+            win | ctrl when key == KeyCode.V => "Sound output",
+            _ => null,
+        };
+    }
+
     public static Verdict Evaluate(KeyCombo combo)
     {
         var modifiers = combo.Modifiers;
