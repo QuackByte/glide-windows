@@ -13,7 +13,7 @@ internal sealed unsafe class TrayIcon : IDisposable
 {
     private const uint CallbackMessage = Win32.WM_APP + 1;
     private const uint IconId = 1;
-    private const nuint ToggleCommand = 1, SettingsCommand = 2, StartAtSignInCommand = 3, QuitCommand = 4, UpdateCommand = 5;
+    private const nuint ToggleCommand = 1, SettingsCommand = 2, StartAtSignInCommand = 3, QuitCommand = 4, UpdateCommand = 5, WhatsNewCommand = 6;
     private const uint NIN_BALLOONUSERCLICK = 0x0405;
     private string? update;
 
@@ -33,6 +33,7 @@ internal sealed unsafe class TrayIcon : IDisposable
     public event Action? ToggleRequested;
     public event Action? SettingsRequested;
     public event Action? UpdateRequested;
+    public event Action? WhatsNewRequested;
 
     /// <summary>Offers a newer version in the menu, and says so once in a notification.</summary>
     public void OfferUpdate(string version)
@@ -83,6 +84,7 @@ internal sealed unsafe class TrayIcon : IDisposable
                 case SettingsCommand: SettingsRequested?.Invoke(); break;
                 case StartAtSignInCommand: StartupEntry.IsEnabled = !StartupEntry.IsEnabled; break;
                 case UpdateCommand: UpdateRequested?.Invoke(); break;
+                case WhatsNewCommand: WhatsNewRequested?.Invoke(); break;
                 case QuitCommand: QuitRequested?.Invoke(); break;
                 default: return false;
             }
@@ -112,6 +114,7 @@ internal sealed unsafe class TrayIcon : IDisposable
             Append(menu, MENU_ITEM_FLAGS.MF_STRING | (StartupEntry.IsEnabled ? MENU_ITEM_FLAGS.MF_CHECKED : 0), StartAtSignInCommand, "Start Glide When I Sign In");
             Append(menu, MENU_ITEM_FLAGS.MF_STRING, SettingsCommand, "Settings…");
             if (update is not null) Append(menu, MENU_ITEM_FLAGS.MF_STRING, UpdateCommand, $"Install Glide {update}");
+            Append(menu, MENU_ITEM_FLAGS.MF_STRING, WhatsNewCommand, "What's New");
             Append(menu, MENU_ITEM_FLAGS.MF_SEPARATOR, 0, null);
             Append(menu, MENU_ITEM_FLAGS.MF_STRING, QuitCommand, "Quit Glide");
 
