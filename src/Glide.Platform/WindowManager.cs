@@ -447,6 +447,51 @@ internal sealed class WindowManager : IDisposable
         });
     }
 
+    // Trackpad swipes
+
+    /// <summary>How far the strip moves per touchpad width the fingers travel, in screen widths (as on macOS).</summary>
+    private const double SwipeGain = 1.5;
+    /// <summary>How far momentum carries the strip after the fingers lift: seconds of travel at release speed.</summary>
+    private const double SwipeMomentum = 0.35;
+    private Display? swiping;
+
+    public void BeginSwipe()
+    {
+        if (!IsEnabled) return;
+        var display = DisplayNamed(Native.MonitorAtCursor());
+        if (display.Spaces.Active.Strip.IsEmpty) return;
+        FinishAnimations();
+        window.StopTimer(WheelTimer);
+        swiping = display;
+    }
+
+    /// <summary>Moves the strip with the fingers; <paramref name="delta"/> in touchpad widths, positive to the right.</summary>
+    public void Swipe(double delta)
+    {
+        if (!IsEnabled || swiping is not { } display || !displays.Contains(display)) return;
+        // Fingers going left pull the strip left, revealing columns on the right.
+        display.Spaces.Active.Scroll(-delta * display.WorkArea.Width * SwipeGain);
+        Layout(animate: false);
+    }
+
+    /// <summary>Lets go: snaps near where momentum takes the strip and keeps focus on a column on screen.</summary>
+    public void EndSwipe(double velocity)
+    {
+        if (swiping is not { } display) return;
+        swiping = null;
+        if (!IsEnabled || !displays.Contains(display)) return;
+        var workspace = display.Spaces.Active;
+        var projected = workspace.ScrollOffset - velocity * display.WorkArea.Width * SwipeGain * SwipeMomentum;
+        var focusMoved = workspace.SettleSwipe(projected);
+        Log.Debug($"Swipe ended at {velocity:0.00} widths/s on {display}; settled at {workspace.ScrollOffset}");
+        Layout();
+        if (focusMoved)
+        {
+            focused = display;
+            FocusActive();
+        }
+    }
+
     // Overview and tabs
 
     /// <summary>Everything the overview shows for the focused monitor, taken when it opens; null while tiling is off.</summary>

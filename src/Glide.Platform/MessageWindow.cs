@@ -41,6 +41,8 @@ internal sealed unsafe class MessageWindow : IDisposable
 
     public HWND Handle { get; }
 
+    public nint Pointer => (nint)Handle.Value;
+
     /// <summary>Handles a message; return true to mark it handled.</summary>
     public Func<uint, WPARAM, LPARAM, bool>? MessageReceived { get; set; }
 

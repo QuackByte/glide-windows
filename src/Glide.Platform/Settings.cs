@@ -40,6 +40,8 @@ public sealed class Settings
     public bool OverrideWindowsShortcuts { get; set; } = true;
     /// <summary>When the horizontal wheel (tilt, or a thumb wheel) scrolls the strip. Win + the vertical wheel always does.</summary>
     public WheelMode HorizontalWheel { get; set; } = WheelMode.Always;
+    /// <summary>Horizontal three-finger swipes on a precision touchpad glide along the strip.</summary>
+    public bool TrackpadSwipe { get; set; } = true;
     /// <summary>Overrides of the default shortcuts, by action name. "none" removes one.</summary>
     public Dictionary<string, string> Shortcuts { get; set; } = [];
     public List<AppRule> Rules { get; set; } = [.. AppRule.Defaults];

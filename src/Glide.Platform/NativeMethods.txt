@@ -106,3 +106,14 @@ UpdateLayeredWindow
 BLENDFUNCTION
 GetDC
 ReleaseDC
+RegisterRawInputDevices
+GetRawInputData
+GetRawInputDeviceInfo
+RAWINPUT
+RAWINPUTDEVICE
+HidP_GetCaps
+HidP_GetValueCaps
+HidP_GetUsageValue
+HidP_GetUsages
+HIDP_VALUE_CAPS
+HIDP_CAPS
