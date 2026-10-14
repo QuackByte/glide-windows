@@ -99,3 +99,10 @@ ToUnicodeEx
 MapVirtualKeyEx
 GetKeyboardLayout
 GetWindowThreadProcessId
+EnumDisplayMonitors
+MonitorFromWindow
+MONITORINFOEXW
+UpdateLayeredWindow
+BLENDFUNCTION
+GetDC
+ReleaseDC

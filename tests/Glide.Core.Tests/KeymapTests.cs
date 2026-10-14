@@ -171,4 +171,13 @@ public class KeymapTests
         Assert.Null(ShortcutPolicy.ReplacedWindowsFeature(Keymap.Defaults[GlideAction.ToggleTiling]));
         Assert.Null(ShortcutPolicy.ReplacedWindowsFeature(new KeyCombo(KeyCode.LeftArrow, KeyModifiers.Alt)));
     }
+
+    [Fact]
+    public void MonitorActionsUseWinAlt()
+    {
+        Assert.Equal(ActionGroup.Monitors, GlideAction.FocusMonitorLeft.Group());
+        Assert.Equal("Win+Alt+←", Keymap.Defaults[GlideAction.FocusMonitorLeft].ToString());
+        Assert.Equal("Win+Alt+Shift+→", Keymap.Defaults[GlideAction.MoveColumnToMonitorRight].ToString());
+        Assert.Null(GlideAction.MoveColumnToMonitorLeft.WorkspaceCommand());
+    }
 }

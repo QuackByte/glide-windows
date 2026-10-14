@@ -152,14 +152,22 @@ public sealed partial class SettingsWindow : Window
             settings.FocusRingColor = ringColors[Math.Max(colors.SelectedIndex, 0)].Value;
             Apply();
         };
+        var thickness = new Slider { Minimum = 1, Maximum = 12, StepFrequency = 1, Value = settings.FocusRingWidth, Width = 220, IsEnabled = settings.FocusRing };
+        thickness.ValueChanged += (_, e) =>
+        {
+            settings.FocusRingWidth = e.NewValue;
+            Apply();
+        };
         var ring = Toggle(settings.FocusRing, on =>
         {
             settings.FocusRing = on;
             colors.IsEnabled = on;
+            thickness.IsEnabled = on;
             Apply();
         });
-        Card("Focus ring", "Colors the border of the focused window. Needs Windows 11.", ring);
+        Card("Focus ring", "A colored ring around the focused window. Works with every app, including ones that draw their own title bar.", ring);
         Card("Focus ring color", null, colors);
+        Card("Focus ring thickness", null, thickness);
 
         Section("Administrator");
         if (host.IsElevated)
@@ -213,6 +221,7 @@ public sealed partial class SettingsWindow : Window
                 ActionGroup.Move => "Move",
                 ActionGroup.Columns => "Columns",
                 ActionGroup.Workspaces => "Workspaces",
+                ActionGroup.Monitors => "Monitors",
                 _ => "General",
             });
             foreach (var action in GlideActions.All.Where(a => a.Group() == group))

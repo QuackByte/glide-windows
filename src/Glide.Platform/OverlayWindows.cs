@@ -35,6 +35,10 @@ public static unsafe class OverlayWindows
                              SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE | SET_WINDOW_POS_FLAGS.SWP_SHOWWINDOW);
     }
 
+    /// <summary>The scale of the monitor showing most of <paramref name="area"/>.</summary>
+    public static double ScaleAt(Rect area) =>
+        Native.Monitors().OrderByDescending(m => m.WorkArea.Intersection(area) is { } overlap ? overlap.Width * overlap.Height : 0).FirstOrDefault()?.Scale ?? 1;
+
     /// <summary>The primary display's work area in pixels, and its scale.</summary>
     public static (Rect WorkArea, double Scale) PrimaryDisplay => Native.PrimaryDisplay();
 }

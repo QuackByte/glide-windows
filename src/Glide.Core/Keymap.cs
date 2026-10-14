@@ -41,6 +41,11 @@ public sealed class Keymap : IEquatable<Keymap>
             [GlideAction.FocusNextWorkspace] = new(KeyCode.RightArrow, command),
             [GlideAction.MoveColumnToPreviousWorkspace] = new(KeyCode.LeftArrow, commandShift),
             [GlideAction.MoveColumnToNextWorkspace] = new(KeyCode.RightArrow, commandShift),
+            // Win+Alt for monitors: Windows uses Win+Shift+arrows for that, which Glide takes for moving columns.
+            [GlideAction.FocusMonitorLeft] = new(KeyCode.LeftArrow, win | KeyModifiers.Alt),
+            [GlideAction.FocusMonitorRight] = new(KeyCode.RightArrow, win | KeyModifiers.Alt),
+            [GlideAction.MoveColumnToMonitorLeft] = new(KeyCode.LeftArrow, win | KeyModifiers.Alt | KeyModifiers.Shift),
+            [GlideAction.MoveColumnToMonitorRight] = new(KeyCode.RightArrow, win | KeyModifiers.Alt | KeyModifiers.Shift),
         };
         // Win+1…9 switch workspaces; Win+Shift+1…9 send the focused column there.
         for (var index = 0; index < KeyCode.Digits.Count; index++)
@@ -124,7 +129,8 @@ public sealed class Keymap : IEquatable<Keymap>
         var overrides = new Dictionary<GlideAction, KeyCombo?>();
         foreach (var (key, value) in storage)
         {
-            if (!Enum.TryParse<GlideAction>(key, out var action) || !Enum.IsDefined(action)) continue;
+            // Names only: Enum.TryParse would also take numbers, which shift as actions are added.
+            if (int.TryParse(key, out _) || !Enum.TryParse<GlideAction>(key, out var action) || !Enum.IsDefined(action)) continue;
             if (value == UnboundValue)
                 overrides[action] = null;
             else if (KeyCombo.FromStorage(value) is { } combo)

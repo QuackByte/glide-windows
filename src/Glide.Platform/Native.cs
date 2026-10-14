@@ -60,6 +60,9 @@ internal readonly record struct Borders(int Left, int Top, int Right, int Bottom
 /// <param name="ClassifiedTileable">Glide tiles it by default: a standard window with a maximize button.</param>
 internal sealed record WindowFacts(bool IsCandidate, bool CanTile, bool ClassifiedTileable, string ClassName, string Title, string? AppId);
 
+/// <param name="Device">Windows' name for the monitor, e.g. \\.\DISPLAY1; stable while it stays connected.</param>
+internal sealed record MonitorInfo(string Device, Rect Bounds, Rect WorkArea, double Scale, bool IsPrimary);
+
 internal static unsafe class Native
 {
     private static readonly uint ownProcessId = (uint)Environment.ProcessId;
@@ -306,6 +309,40 @@ internal static unsafe class Native
             // Before Windows 10 2004.
             return false;
         }
+    }
+
+    /// <summary>
+    /// The monitors, primary first: a stable device name, the whole screen, the work area (without
+    /// the taskbar) and the scale factor.
+    /// </summary>
+    public static List<MonitorInfo> Monitors()
+    {
+        var result = new List<MonitorInfo>();
+        PInvoke.EnumDisplayMonitors(HDC.Null, (RECT?)null, (monitor, _, _, _) =>
+        {
+            if (Describe(monitor) is { } info) result.Add(info);
+            return true;
+        }, default);
+        return [.. result.OrderByDescending(m => m.IsPrimary)];
+    }
+
+    /// <summary>The monitor a window is on (most of it), by device name.</summary>
+    public static string? MonitorOf(HWND hwnd) => Describe(PInvoke.MonitorFromWindow(hwnd, MONITOR_FROM_FLAGS.MONITOR_DEFAULTTONEAREST))?.Device;
+
+    /// <summary>The monitor under the pointer, by device name.</summary>
+    public static string? MonitorAtCursor() =>
+        PInvoke.GetCursorPos(out var point) ? Describe(PInvoke.MonitorFromPoint(point, MONITOR_FROM_FLAGS.MONITOR_DEFAULTTONEAREST))?.Device : null;
+
+    public static Point? CursorPosition => PInvoke.GetCursorPos(out var point) ? new Point(point.X, point.Y) : null;
+
+    private static MonitorInfo? Describe(HMONITOR monitor)
+    {
+        var info = new MONITORINFOEXW();
+        info.monitorInfo.cbSize = (uint)sizeof(MONITORINFOEXW);
+        if (!PInvoke.GetMonitorInfo(monitor, (MONITORINFO*)&info)) return null;
+        var scale = PInvoke.GetDpiForMonitor(monitor, MONITOR_DPI_TYPE.MDT_EFFECTIVE_DPI, out var dpi, out _).Succeeded ? dpi / 96.0 : 1.0;
+        return new MonitorInfo(info.szDevice.ToString(), ToRect(info.monitorInfo.rcMonitor), ToRect(info.monitorInfo.rcWork), scale,
+                               (info.monitorInfo.dwFlags & 1) != 0 /* MONITORINFOF_PRIMARY */);
     }
 
     /// <summary>The primary display's work area (without the taskbar) and its scale factor.</summary>

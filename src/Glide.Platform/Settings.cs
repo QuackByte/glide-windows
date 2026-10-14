@@ -29,6 +29,8 @@ public sealed class Settings
     public bool Animate { get; set; } = true;
     /// <summary>Colors the focused tiled window's border (Windows 11).</summary>
     public bool FocusRing { get; set; } = true;
+    /// <summary>The ring's thickness around the focused window, in pixels at 100% scaling.</summary>
+    public double FocusRingWidth { get; set; } = 4;
     /// <summary>"accent" for the Windows accent color, or "#RRGGBB".</summary>
     public string FocusRingColor { get; set; } = "accent";
     /// <summary>
@@ -50,7 +52,7 @@ public sealed class Settings
             var keymap = new Keymap();
             foreach (var (name, value) in Shortcuts)
             {
-                if (!Enum.TryParse<GlideAction>(name, ignoreCase: true, out var action) || !Enum.IsDefined(action))
+                if (int.TryParse(name, out _) || !Enum.TryParse<GlideAction>(name, ignoreCase: true, out var action) || !Enum.IsDefined(action))
                 {
                     Log.Info($"Settings: unknown action \"{name}\"");
                     continue;
