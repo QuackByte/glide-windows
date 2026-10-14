@@ -2,6 +2,20 @@
 
 What's new in each version of Glide for Windows. Glide shows the new entries once after it updates, and each release's notes on GitHub come from here, so write for people using Glide. Add an entry for every change worth knowing about under the next version before tagging it.
 
+## 0.8.0 — 2026-10-14
+
+### New
+
+- **Dim unfocused windows.** The windows behind the focused one on its monitor go darker, so the focused window stands out. Off by default; turn it on, and set how dark, in Settings › Appearance.
+- **Every workspace in use is listed.** The tray icon's tooltip and menu show all the workspaces with windows on them. The icon still shows the active one.
+- **Workspace numbers on screen when switching** can be turned off in Settings › Appearance.
+- **Install updates automatically.** Off by default. Turn it on in Settings › Updates, and Glide installs a new version as soon as it finds one, then starts again.
+
+### Changes
+
+- Releases aren't code-signed yet, so Windows SmartScreen may warn the first time you run Glide: choose **More info › Run anyway**.
+- The installer's privacy policy no longer links to a code-signing policy.
+
 ## 0.7.0 — 2026-10-14
 
 ### New
