@@ -1,3 +1,4 @@
+using Glide.Core;
 using Glide.Platform;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
@@ -13,6 +14,7 @@ public partial class App : Application
     private GlideHost? host;
     private Mutex? instance;
     private SettingsWindow? settingsWindow;
+    private WhatsNewWindow? whatsNewWindow;
     private OverviewWindow? overview;
     private TabBars? tabBars;
     private readonly WorkspaceDisplay workspaceDisplay = new();
@@ -68,6 +70,7 @@ public partial class App : Application
             return;
         }
         host.SettingsRequested += ShowSettings;
+        host.WhatsNewRequested += () => ShowWhatsNew(WhatsNewWindow.History.Releases);
         host.OverviewToggleRequested += ToggleOverview;
         tabBars = new TabBars(host);
         host.TabBarsChanged += tabBars.Show;
@@ -86,6 +89,43 @@ public partial class App : Application
             // Welcome: show what Glide does and where its shortcuts are, once.
             host.ApplySettings(host.Settings);
             ShowSettings();
+        }
+        ShowWhatsNewAfterUpdate(firstRun);
+    }
+
+    /// <summary>
+    /// The first start of a newer version shows what changed since the last one seen. A new install
+    /// only remembers its version. Copies from before 0.7 never saved one, so they see this version's.
+    /// </summary>
+    private void ShowWhatsNewAfterUpdate(bool firstRun)
+    {
+        if (host is null) return;
+        var current = GlideHost.Version;
+        var settings = host.Settings;
+        Version? seen = Version.TryParse(settings.LastSeenVersion, out var parsed) ? parsed : null;
+        if (seen is not null && seen.ToString(3) == current.ToString(3)) return;
+        settings.LastSeenVersion = current.ToString(3);
+        host.ApplySettings(settings);
+        if (firstRun) return;
+        var releases = WhatsNewWindow.History.Since(seen, current);
+        if (releases.Count > 0) ShowWhatsNew(releases);
+    }
+
+    private void ShowWhatsNew(IReadOnlyList<Changelog.Release> releases)
+    {
+        if (releases.Count == 0) return;
+        try
+        {
+            whatsNewWindow?.Close();
+            whatsNewWindow = new WhatsNewWindow(releases);
+            whatsNewWindow.Closed += (_, _) => whatsNewWindow = null;
+            whatsNewWindow.Activate();
+            GlideHost.BringToFront(WinRT.Interop.WindowNative.GetWindowHandle(whatsNewWindow));
+        }
+        catch (Exception e)
+        {
+            Log.Error("Couldn't show what's new", e);
+            whatsNewWindow = null;
         }
     }
 
@@ -115,6 +155,7 @@ public partial class App : Application
             tabBars?.Close();
             workspaceDisplay.Close();
             settingsWindow?.Close();
+            whatsNewWindow?.Close();
         }
         catch (Exception e)
         {

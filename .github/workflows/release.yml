@@ -1,7 +1,8 @@
 name: Release
 
-# Pushing a tag like v0.7.0 builds both installers and attaches them to a draft release,
-# to review, write notes for, and publish by hand. Glide's updater only sees published releases.
+# Pushing a tag like v0.7.0 builds both installers and attaches them to a draft release, with
+# that version's CHANGELOG.md section as its notes, to review and publish by hand. Glide's updater
+# only sees published releases.
 #
 # Signing goes through SignPath (free for open source, certificate by SignPath Foundation) once
 # the SIGNPATH_ORGANIZATION_ID variable and SIGNPATH_API_TOKEN secret are set; until then the
@@ -25,6 +26,33 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 9.0.x
+      # The notes are this version's CHANGELOG.md section, the same text Glide shows after updating.
+      - name: Release notes
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          $changelog = (Get-Content CHANGELOG.md -Raw) -replace "`r`n", "`n"
+          $section = [regex]::Match($changelog, "(?ms)^## v?$([regex]::Escape($version))\b[^\n]*\n(.*?)(?=^## |\z)")
+          if (-not $section.Success -or -not $section.Groups[1].Value.Trim()) {
+            Write-Error "CHANGELOG.md has no entries for $version. Add a '## $version' section before tagging."
+            exit 1
+          }
+          $policy = '[Code signing policy](https://quackbyte.dev/glide/code-signing/)'
+          $signing = if ($env:SIGN -eq 'true') {
+            "$policy`: free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by [SignPath Foundation](https://signpath.org/)."
+          } else {
+            "This release isn't code-signed yet, so SmartScreen may warn the first time: choose **More info › Run anyway**. $policy."
+          }
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+          @(
+            $section.Groups[1].Value.Trim()
+            ''
+            '## Install'
+            ''
+            'Download the installer for your PC: **x64** for most PCs, **ARM64** for Snapdragon and other Arm PCs. It installs just for you, without administrator rights, and Glide keeps itself up to date from then on. Checksums are in `SHA256SUMS.txt`.'
+            ''
+            $signing
+          ) -join "`n" | Set-Content artifacts\release-notes.md -Encoding utf8
       - name: Publish
         shell: pwsh
         run: |
@@ -111,4 +139,6 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" (Get-ChildItem artifacts\*-Setup.exe).FullName artifacts\SHA256SUMS.txt --draft --title "Glide for Windows $("${{ github.ref_name }}".TrimStart('v'))" --generate-notes --notes "Download the installer for your PC: x64, or ARM64 for Arm PCs. [Code signing policy](https://quackbyte.dev/glide/code-signing/): free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by [SignPath Foundation](https://signpath.org/)."
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          gh release create "${{ github.ref_name }}" (Get-ChildItem artifacts\*-Setup.exe).FullName artifacts\SHA256SUMS.txt --draft --title "Glide for Windows $version" --notes-file artifacts\release-notes.md

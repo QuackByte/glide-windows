@@ -49,6 +49,8 @@ public sealed class Settings
     public bool CheckForUpdates { get; set; } = true;
     /// <summary>The GitHub repository ("owner/name") whose releases carry Glide's installers.</summary>
     public string UpdateRepository { get; set; } = "QuackByte/glide-windows";
+    /// <summary>The version whose "What's new" was last shown; a newer Glide shows its own once.</summary>
+    public string? LastSeenVersion { get; set; }
     /// <summary>Overrides of the default shortcuts, by action name. "none" removes one.</summary>
     public Dictionary<string, string> Shortcuts { get; set; } = [];
     public List<AppRule> Rules { get; set; } = [.. AppRule.Defaults];

@@ -71,6 +71,7 @@ public sealed class GlideHost : IDisposable
         };
         tray.ToggleRequested += manager.Toggle;
         tray.SettingsRequested += () => SettingsRequested?.Invoke();
+        tray.WhatsNewRequested += () => WhatsNewRequested?.Invoke();
         tray.UpdateRequested += () => _ = InstallUpdateAsync();
         tray.QuitRequested += () =>
         {
@@ -149,6 +150,7 @@ public sealed class GlideHost : IDisposable
 
     /// <summary>The user asked for the settings window (tray menu, or launching Glide again).</summary>
     public event Action? SettingsRequested;
+    public event Action? WhatsNewRequested;
 
     /// <summary>The overview shortcut was pressed: open the overview, or close it if it's open.</summary>
     public event Action? OverviewToggleRequested;

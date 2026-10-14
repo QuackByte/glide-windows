@@ -12,4 +12,8 @@
     <Using Include="Xunit" />
     <ProjectReference Include="../../src/Glide.Core/Glide.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Checked by ChangelogTests, so a malformed entry fails CI before it ships. -->
+    <None Include="../../CHANGELOG.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>
