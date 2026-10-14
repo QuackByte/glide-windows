@@ -31,7 +31,7 @@ jobs:
         shell: pwsh
         run: |
           $version = "${{ github.ref_name }}".TrimStart('v')
-          $changelog = (Get-Content CHANGELOG.md -Raw) -replace "`r`n", "`n"
+          $changelog = (Get-Content CHANGELOG.md -Raw -Encoding utf8) -replace "`r`n", "`n"
           $section = [regex]::Match($changelog, "(?ms)^## v?$([regex]::Escape($version))\b[^\n]*\n(.*?)(?=^## |\z)")
           if (-not $section.Success -or -not $section.Groups[1].Value.Trim()) {
             Write-Error "CHANGELOG.md has no entries for $version. Add a '## $version' section before tagging."
