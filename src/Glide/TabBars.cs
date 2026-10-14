@@ -45,6 +45,12 @@ internal sealed class TabBars(GlideHost host)
 
     public void Hide() => Show([]);
 
+    public void Close()
+    {
+        foreach (var shown in windows) shown.Window.Close();
+        windows.Clear();
+    }
+
     private static bool SameContent(TabBar a, TabBar b) =>
         a.ActiveIndex == b.ActiveIndex && a.IsFocused == b.IsFocused && a.Tabs.SequenceEqual(b.Tabs);
 

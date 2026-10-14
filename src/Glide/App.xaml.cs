@@ -58,7 +58,7 @@ public partial class App : Application
         var queue = DispatcherQueue.GetForCurrentThread();
         try
         {
-            host = new GlideHost(action => queue.TryEnqueue(() => action()), Exit);
+            host = new GlideHost(action => queue.TryEnqueue(() => action()), Quit);
         }
         catch (Exception e)
         {
@@ -100,6 +100,28 @@ public partial class App : Application
             // The previous copy exited without releasing it; it's ours now.
             return true;
         }
+    }
+
+    /// <summary>
+    /// Ends the app once Glide has put every window back. WinUI keeps running while any of its
+    /// windows exist, hidden overlays included, so they're closed first, and the process ends
+    /// regardless a moment later.
+    /// </summary>
+    private void Quit()
+    {
+        try
+        {
+            overview?.Close();
+            tabBars?.Close();
+            workspaceDisplay.Close();
+            settingsWindow?.Close();
+        }
+        catch (Exception e)
+        {
+            Log.Error("Closing windows on quit failed", e);
+        }
+        Exit();
+        _ = Task.Delay(TimeSpan.FromSeconds(2)).ContinueWith(_ => Environment.Exit(0));
     }
 
     private void ToggleOverview()

@@ -70,6 +70,13 @@ internal sealed class WorkspaceDisplay
         hideTimer.Start();
     }
 
+    public void Close()
+    {
+        hideTimer?.Stop();
+        window?.Close();
+        window = null;
+    }
+
     private void Create()
     {
         window = new Window { SystemBackdrop = new DesktopAcrylicBackdrop() };
