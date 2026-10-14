@@ -1,19 +1,27 @@
 # Publishes Glide (Release, self-contained) and wraps it in an installer:
-#   installer\build.ps1 [-Platform x64|ARM64] [-Version 0.1.0]
+#   installer\build.ps1 [-Platform x64|ARM64] [-Version 0.1.0] [-PublishOnly | -PackageOnly]
 # Needs Inno Setup 6 (winget install JRSoftware.InnoSetup). Output: artifacts\Glide-<version>-<arch>-Setup.exe
+# The release workflow runs the two halves separately, to sign the published files in between.
 param(
     [ValidateSet("x64", "ARM64")]
     [string]$Platform = $(if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "ARM64" } else { "x64" }),
-    [string]$Version = "0.1.0"
+    [string]$Version = "0.1.0",
+    # Only publish to artifacts\publish-<arch>.
+    [switch]$PublishOnly,
+    # Only build the installer from an existing artifacts\publish-<arch>.
+    [switch]$PackageOnly
 )
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot
 $arch = $Platform.ToLowerInvariant()
 $publish = Join-Path $root "artifacts\publish-$arch"
 
-if (Test-Path $publish) { Remove-Item $publish -Recurse -Force }
-dotnet publish (Join-Path $root "src\Glide\Glide.csproj") -c Release -p:Platform=$Platform -p:Version=$Version -o $publish
-if ($LASTEXITCODE) { exit $LASTEXITCODE }
+if (-not $PackageOnly) {
+    if (Test-Path $publish) { Remove-Item $publish -Recurse -Force }
+    dotnet publish (Join-Path $root "src\Glide\Glide.csproj") -c Release -p:Platform=$Platform -p:Version=$Version -o $publish
+    if ($LASTEXITCODE) { exit $LASTEXITCODE }
+    if ($PublishOnly) { exit 0 }
+}
 
 $onPath = Get-Command iscc -ErrorAction SilentlyContinue
 $iscc = @(

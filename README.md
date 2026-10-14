@@ -2,7 +2,13 @@
 
 A keyboard-first scrolling window manager for Windows 11, the Windows counterpart of [Glide for macOS](https://github.com/QuackByte/glide). Windows are columns on an endless horizontal strip that you glide through with the keyboard, in the style of niri and PaperWM.
 
-Status: early. Tiling on every monitor, workspaces, stacks and tabs, the overview, the Win-key shortcuts, mouse-wheel and touchpad scrolling, the settings window, the focus ring and the crash watchdog work; a signed release is still to come. See [PLAN.md](PLAN.md).
+Status: early. Tiling on every monitor, workspaces, stacks and tabs, the overview, the Win-key shortcuts, mouse-wheel and touchpad scrolling, the settings window, the focus ring and the crash watchdog work. See [PLAN.md](PLAN.md), and [quackbyte.dev/glide](https://quackbyte.dev/glide/#platforms) for what each platform has.
+
+## Install
+
+Download the installer for your PC (x64, or ARM64 for Arm PCs such as Snapdragon laptops) from the [latest release](https://github.com/QuackByte/glide-windows/releases/latest) or [quackbyte.dev/glide](https://quackbyte.dev/glide/). It installs for your user only, without administrator rights, and keeps itself up to date.
+
+Releases are signed with a certificate from [SignPath Foundation](https://signpath.org), free code signing for open-source projects provided by [SignPath.io](https://signpath.io). See the [code signing policy](https://quackbyte.dev/glide/code-signing/).
 
 ## Shortcuts
 
@@ -58,7 +64,7 @@ Everything is stored in `%APPDATA%\Glide\settings.json` and applies as you chang
   "horizontalWheel": "Always",
   "trackpadSwipe": true,
   "rememberApps": true,
-  "checkForUpdates": false,
+  "checkForUpdates": true,
   "shortcuts": {
     "FocusColumnLeft": "Win+J",
     "FocusColumnRight": "Win+K",
@@ -88,7 +94,7 @@ Action names are those in [`Action.cs`](src/Glide.Core/Action.cs). `focusRingCol
 - **Touchpad**: on a precision touchpad, three-finger swipes left and right glide along the strip and snap to a column when you lift. Windows uses those swipes to switch apps too, so set Windows' three-finger gestures to "Nothing" (Settings › Bluetooth & devices › Touchpad); Glide's Settings links there.
 - **Mouse**: the horizontal wheel (tilting the wheel, or a thumb wheel like the MX Master's) glides along the strip and snaps to a column when you stop; Win + the vertical wheel does the same on any mouse. Settings › General › Mouse can limit the horizontal wheel to while Win is held, or give it back to apps.
 - **Apps go back where you keep them**: Glide remembers each app's monitor, workspace, column width and place on the strip. When you reopen an app, its window opens there, between the same neighbours; after a restart, open windows are arranged the same way. App rules still come first, and Settings › General can turn this off or forget everything.
-- **Updates** (off for now): Glide can look for a newer version twice a day and offer it from the tray icon; the installer is checked against the release's checksums, then Glide puts your windows back, updates and starts again. It needs a public repository for the installers (`updateRepository` in the settings file), which doesn't exist yet.
+- **Updates**: Glide looks for a newer version on this repository's [releases](https://github.com/QuackByte/glide-windows/releases) twice a day and offers it from the tray icon. The installer is checked against the release's checksums, then Glide puts your windows back, updates and starts again. Turn it off under Settings › Updates (`checkForUpdates`); the check sends GitHub nothing but a request for the latest release, with Glide's version in the user agent.
 - **If Glide crashes** or is ended from Task Manager, a small watchdog copy of Glide puts every window back on screen, and after a real crash it starts Glide again (at most once a minute), which re-tiles from the saved layout.
 - **Workspaces**: switching or sending a column to another workspace shows the workspaces in use for a moment near the bottom of the screen.
 - The tray icon shows the active workspace; click it for the menu. `Glide.exe --quit` quits a running Glide.

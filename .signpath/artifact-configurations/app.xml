@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Glide's own binaries in both published folders; the .NET and Windows App SDK files come signed by Microsoft. -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file-set>
+      <include path="publish-*/Glide.exe" min-matches="2" max-matches="2" />
+      <include path="publish-*/Glide*.dll" min-matches="2" max-matches="unbounded" />
+      <for-each>
+        <authenticode-sign />
+      </for-each>
+    </pe-file-set>
+  </zip-file>
+</artifact-configuration>
