@@ -34,7 +34,7 @@ public sealed unsafe class Thumbnail : IDisposable
     /// fits without stretching, centered. Only the visible window is shown, not its invisible
     /// resize borders.
     /// </summary>
-    public Rect Show(Rect area, byte opacity = 255)
+    public Rect Show(Rect area, byte opacity = 255, Rect? clip = null)
     {
         if (handle == 0) return area;
         var hwnd = Native.Hwnd(source);
@@ -45,11 +45,25 @@ public sealed unsafe class Thumbnail : IDisposable
         var scale = Math.Min(area.Width / width, area.Height / height);
         var shown = new Rect(Math.Round(area.X + (area.Width - width * scale) / 2), Math.Round(area.Y + (area.Height - height * scale) / 2),
                              Math.Round(width * scale), Math.Round(height * scale));
+        // Cropped to the clip: the part of the source that falls inside it, scaled the same.
+        var visible = clip is { } bounds ? shown.Intersection(bounds) : shown;
+        if (visible is not { Width: > 0, Height: > 0 } part)
+        {
+            Hide();
+            return shown;
+        }
+        var cropped = new RECT
+        {
+            left = borders.Left + (int)Math.Round((part.X - shown.X) / scale),
+            top = borders.Top + (int)Math.Round((part.Y - shown.Y) / scale),
+            right = borders.Left + (int)Math.Round((part.MaxX - shown.X) / scale),
+            bottom = borders.Top + (int)Math.Round((part.MaxY - shown.Y) / scale),
+        };
         var properties = new DWM_THUMBNAIL_PROPERTIES
         {
             dwFlags = PInvoke.DWM_TNP_RECTDESTINATION | PInvoke.DWM_TNP_RECTSOURCE | PInvoke.DWM_TNP_VISIBLE | PInvoke.DWM_TNP_OPACITY,
-            rcDestination = new RECT { left = (int)shown.X, top = (int)shown.Y, right = (int)shown.MaxX, bottom = (int)shown.MaxY },
-            rcSource = new RECT { left = borders.Left, top = borders.Top, right = borders.Left + width, bottom = borders.Top + height },
+            rcDestination = new RECT { left = (int)part.X, top = (int)part.Y, right = (int)part.MaxX, bottom = (int)part.MaxY },
+            rcSource = cropped,
             fVisible = true,
             opacity = opacity,
         };

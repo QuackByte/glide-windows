@@ -78,7 +78,8 @@ internal sealed class TabBars(GlideHost host)
                 Background = active
                     ? bar.IsFocused ? WorkspaceDisplay.Accent() : (Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"]
                     : (Brush)Application.Current.Resources["SubtleFillColorTransparentBrush"],
-                Content = new TextBlock
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                Content = IconImages.Labeled(window, new TextBlock
                 {
                     Text = title.Length > 0 ? title : "Untitled",
                     TextTrimming = TextTrimming.CharacterEllipsis,
@@ -87,7 +88,7 @@ internal sealed class TabBars(GlideHost host)
                     Foreground = active && bar.IsFocused
                         ? (Brush)Application.Current.Resources["TextOnAccentFillColorPrimaryBrush"]
                         : (Brush)Application.Current.Resources[active ? "TextFillColorPrimaryBrush" : "TextFillColorSecondaryBrush"],
-                },
+                }),
             };
             ToolTipService.SetToolTip(tab, title);
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(tab, $"Tab: {title}");

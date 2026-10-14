@@ -152,7 +152,10 @@ internal sealed class WindowManager : IDisposable
     /// Colors the border of the focused window when it's tiled on its monitor's active workspace,
     /// and puts back the border of the one before.
     /// </summary>
-    private void UpdateFocusRing()
+    private void UpdateFocusRing() => UpdateFocusRing(landed: false);
+
+    /// <param name="landed">Windows have reached their places, so their actual frames are right.</param>
+    private void UpdateFocusRing(bool landed)
     {
         (WindowId Window, uint Color)? target = null;
         if (IsEnabled && settings.FocusRing)
@@ -162,7 +165,7 @@ internal sealed class WindowManager : IDisposable
                 target = (foreground, Native.ParseColor(settings.FocusRingColor));
         }
         RefreshTabBars();
-        DrawRing(target);
+        DrawRing(target, landed);
         if (target == ringed) return;
         // Windows' own border too, as the ring's inner edge, where the app has one.
         if (ringed is var (old, _) && Native.Exists(Native.Hwnd(old))) Native.SetBorderColor(Native.Hwnd(old), null);
@@ -171,10 +174,13 @@ internal sealed class WindowManager : IDisposable
     }
 
     /// <summary>Shows the ring around the focused window once it's in place: not while it slides, waits hidden, or is being dragged.</summary>
-    private void DrawRing((WindowId Window, uint Color)? target)
+    private void DrawRing((WindowId Window, uint Color)? target, bool landed)
     {
+        // Windows move asynchronously, so right after a layout a window may not be where it was
+        // sent yet: the ring goes where it's going, and is corrected once windows have landed.
+        Rect? Frame(WindowId id) => !landed && placed.TryGetValue(id, out var sent) ? sent : Native.VisibleFrame(Native.Hwnd(id));
         if (target is not var (id, color) || settings.FocusRingWidth <= 0 || motions.ContainsKey(id) || hidden.Contains(id) || dragging == id
-            || Find(id) is not var (display, _) || Native.VisibleFrame(Native.Hwnd(id)) is not { } frame)
+            || Find(id) is not var (display, _) || Frame(id) is not { } frame)
         {
             ring.Hide();
             return;
@@ -536,11 +542,19 @@ internal sealed class WindowManager : IDisposable
         if (IsEnabled)
         {
             var foreground = Native.Id(Native.Foreground);
+            var progress = AnimationProgress();
             foreach (var display in displays)
             {
                 foreach (var bar in display.Spaces.Active.TabBars())
                 {
-                    bars.Add(new TabBar(bar.Frame, [.. bar.Windows.Select(w => (w, Native.Title(Native.Hwnd(w))))], bar.ActiveIndex,
+                    // While its column slides, the bar rides along with the active tab.
+                    var frame = bar.Frame;
+                    if (motions.TryGetValue(bar.ActiveWindow, out var motion))
+                    {
+                        var now = FrameAnimation.Frame(motion.From, motion.To, progress);
+                        frame = frame.Offset(now.X - motion.To.X, now.Y - motion.To.Y);
+                    }
+                    bars.Add(new TabBar(frame, [.. bar.Windows.Select(w => (w, Native.Title(Native.Hwnd(w))))], bar.ActiveIndex,
                                         bar.Windows.Contains(foreground)));
                 }
             }
@@ -986,7 +1000,9 @@ internal sealed class WindowManager : IDisposable
         {
             Log.Debug("Learned minimum widths; laying out again");
             Layout(animate: true, pass + 1);
+            return;
         }
+        UpdateFocusRing(landed: true);
     }
 
     private double AnimationProgress() =>
@@ -997,6 +1013,7 @@ internal sealed class WindowManager : IDisposable
         var progress = AnimationProgress();
         foreach (var (id, (from, to)) in motions)
             Native.SetVisibleFrame(Native.Hwnd(id), FrameAnimation.Frame(from, to, progress), borders.GetValueOrDefault(id));
+        if (currentTabBars.Count > 0) RefreshTabBars();
         if (progress >= 1)
         {
             motions = [];

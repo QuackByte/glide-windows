@@ -117,3 +117,10 @@ HidP_GetUsageValue
 HidP_GetUsages
 HIDP_VALUE_CAPS
 HIDP_CAPS
+SendMessageTimeout
+GetClassLongPtr
+GetIconInfo
+GetDIBits
+SHGetFileInfo
+GetObject
+BITMAP
