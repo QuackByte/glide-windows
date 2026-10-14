@@ -35,6 +35,17 @@ internal sealed class OverviewWindow : Window
     private readonly TextBlock matchCount;
     private readonly Dictionary<WindowId, Thumbnail> thumbnails = [];
     private readonly Dictionary<WindowId, (Button Tile, Rect Preview)> tiles = [];
+    /// <summary>Where each tile sits before its row scrolls, by window, and its row.</summary>
+    private readonly Dictionary<WindowId, (int Row, Rect Frame)> unscrolled = [];
+    /// <summary>How far each row is scrolled, in XAML units; rows too wide for the screen scroll.</summary>
+    private double[] rowOffsets = [];
+    private double[] rowWidths = [];
+    private (double Left, double Right) visibleColumns;
+    private (double Top, double Height)[] rowBands = [];
+    /// <summary>The canvas the row being built goes into, clipped to the visible part of the row.</summary>
+    private Canvas? rowCanvas;
+    /// <summary>Tiles never shrink below this share of their natural size; rows scroll instead.</summary>
+    private const double MinimumShrink = 0.45;
     private OverviewData? data;
     private Overview? overview;
     private WindowId previousForeground;
@@ -84,6 +95,7 @@ internal sealed class OverviewWindow : Window
             if (e.OriginalSource == root || e.OriginalSource == canvas) Close(goTo: null);
         };
         root.PreviewKeyDown += OnKeyDown;
+        root.PointerWheelChanged += OnWheel;
         // Typing filters wherever keyboard focus happens to be.
         root.CharacterReceived += (_, e) =>
         {
@@ -118,10 +130,12 @@ internal sealed class OverviewWindow : Window
         IsOpen = true;
         host.OverviewOpen = true;
         search.Text = "";
+        rowOffsets = new double[overview.Rows.Count];
         AppWindow.Show();
         Activate();
         GlideHost.BringToFront(hwnd);
         Layout();
+        RevealSelection();
         DispatcherQueue.TryEnqueue(() => search.Focus(FocusState.Programmatic));
     }
 
@@ -144,6 +158,7 @@ internal sealed class OverviewWindow : Window
         foreach (var thumbnail in thumbnails.Values) thumbnail.Dispose();
         thumbnails.Clear();
         tiles.Clear();
+        unscrolled.Clear();
         canvas.Children.Clear();
     }
 
@@ -168,7 +183,46 @@ internal sealed class OverviewWindow : Window
                 return;
         }
         e.Handled = true;
-        Restyle();
+        if (!RevealSelection()) Restyle();
+    }
+
+    /// <summary>The wheel scrolls the row under the pointer, if it's wider than the screen.</summary>
+    private void OnWheel(object sender, PointerRoutedEventArgs e)
+    {
+        var point = e.GetCurrentPoint(root);
+        var delta = point.Properties.MouseWheelDelta;
+        if (point.Properties.IsHorizontalMouseWheel) delta = -delta;
+        for (var row = 0; row < rowBands.Length; row++)
+        {
+            var (top, height) = rowBands[row];
+            if (point.Position.Y < top || point.Position.Y > top + height) continue;
+            if (ScrollRow(row, rowOffsets[row] - delta)) Layout();
+            e.Handled = true;
+            return;
+        }
+    }
+
+    private bool ScrollRow(int row, double offset)
+    {
+        var maximum = Math.Max(rowWidths[row] - (visibleColumns.Right - visibleColumns.Left), 0);
+        var clamped = Math.Clamp(offset, 0, maximum);
+        if (Math.Abs(clamped - rowOffsets[row]) < 0.5) return false;
+        rowOffsets[row] = clamped;
+        return true;
+    }
+
+    /// <summary>Scrolls the selection's row so the selected tile is on screen; returns true if it laid out again.</summary>
+    private bool RevealSelection()
+    {
+        if (overview?.Selection is not { } selection || !unscrolled.TryGetValue(selection, out var tile)) return false;
+        var width = visibleColumns.Right - visibleColumns.Left;
+        var left = tile.Frame.X - visibleColumns.Left;
+        var offset = rowOffsets[tile.Row];
+        if (left - offset < 0) offset = left - ColumnSpacing;
+        else if (left + tile.Frame.Width - offset > width) offset = left + tile.Frame.Width - width + ColumnSpacing;
+        if (!ScrollRow(tile.Row, offset)) return false;
+        Layout();
+        return true;
     }
 
     private void Filter()
@@ -197,18 +251,32 @@ internal sealed class OverviewWindow : Window
         var widest = rows.Select(r => r.Widths.Sum() * scale + ColumnSpacing * Math.Max(r.Columns.Count - 1, 0)).DefaultIfEmpty(0).Max();
         if (widest > available)
         {
-            var shrink = (available - ColumnSpacing * rows.Max(r => Math.Max(r.Columns.Count - 1, 0))) / (widest - ColumnSpacing * rows.Max(r => Math.Max(r.Columns.Count - 1, 0)));
-            scale *= Math.Max(shrink, 0.05);
+            // Shrink to fit, but not so far that windows become unreadable: past that, rows scroll.
+            var gaps = ColumnSpacing * rows.Max(r => Math.Max(r.Columns.Count - 1, 0));
+            var shrink = (available - gaps) / Math.Max(widest - gaps, 1);
+            scale *= Math.Clamp(shrink, MinimumShrink, 1);
             rowHeight = data.Viewport.Height * scale;
         }
+        visibleColumns = (Margin + BadgeSize + BadgeGap, width - Margin);
+        rowWidths = [.. rows.Select(r => r.Widths.Sum() * scale + ColumnSpacing * Math.Max(r.Columns.Count - 1, 0))];
+        if (rowOffsets.Length != rows.Count) rowOffsets = new double[rows.Count];
+        rowBands = new (double, double)[rows.Count];
 
         var totalHeight = rowHeight * count + RowSpacing * (count - 1);
         var y = top + Math.Max((bottom - top - totalHeight) / 2, 0);
         for (var rowIndex = 0; rowIndex < rows.Count; rowIndex++, y += rowHeight + RowSpacing)
         {
             var row = rows[rowIndex];
+            rowBands[rowIndex] = (y, rowHeight);
             AddBadge(row.Workspace, row.Workspace == data.ActiveWorkspace, Margin, y + rowHeight / 2 - BadgeSize / 2);
             var x = Margin + BadgeSize + BadgeGap;
+            // Each row draws into its own canvas, clipped to the part of the screen it scrolls in.
+            rowCanvas = new Canvas
+            {
+                Clip = new RectangleGeometry { Rect = new Windows.Foundation.Rect(visibleColumns.Left - 6, y - 8, visibleColumns.Right - visibleColumns.Left + 12, rowHeight + 16) },
+            };
+            canvas.Children.Add(rowCanvas);
+            var shift = rowOffsets[rowIndex];
             if (row.Columns.Count == 0)
             {
                 AddEmpty(x, y, data.Viewport.Width * scale / 2, rowHeight);
@@ -220,17 +288,18 @@ internal sealed class OverviewWindow : Window
                 var windows = row.Columns[column].Windows;
                 if (row.Columns[column].IsTabbed)
                 {
-                    AddTabStrip(rowIndex, column, x, y, columnWidth);
-                    AddTile(overview.ShownWindow(rowIndex, column), new Rect(x, y + TabStripHeight + 4, columnWidth, rowHeight - TabStripHeight - 4), pixels);
+                    AddTabStrip(rowIndex, column, x - shift, y, columnWidth);
+                    AddTile(rowIndex, overview.ShownWindow(rowIndex, column), new Rect(x, y + TabStripHeight + 4, columnWidth, rowHeight - TabStripHeight - 4), shift, pixels);
                 }
                 else
                 {
                     var tileHeight = (rowHeight - StackSpacing * (windows.Count - 1)) / windows.Count;
                     for (var i = 0; i < windows.Count; i++)
-                        AddTile(windows[i], new Rect(x, y + i * (tileHeight + StackSpacing), columnWidth, tileHeight), pixels);
+                        AddTile(rowIndex, windows[i], new Rect(x, y + i * (tileHeight + StackSpacing), columnWidth, tileHeight), shift, pixels);
                 }
                 x += columnWidth + ColumnSpacing;
             }
+            rowCanvas = null;
         }
         Restyle();
     }
@@ -282,7 +351,7 @@ internal sealed class OverviewWindow : Window
             var title = data!.Titles.GetValueOrDefault(window, "");
             var tab = new Button
             {
-                Content = new TextBlock { Text = title, TextTrimming = TextTrimming.CharacterEllipsis, FontSize = 11 },
+                Content = IconImages.Labeled(window, new TextBlock { Text = title, TextTrimming = TextTrimming.CharacterEllipsis, FontSize = 11 }, size: 14),
                 MaxWidth = Math.Max(width / windows.Count - 4, 24),
                 Height = TabStripHeight,
                 Padding = new Thickness(6, 0, 6, 0),
@@ -295,14 +364,17 @@ internal sealed class OverviewWindow : Window
         Place(strip, x, y);
     }
 
-    private void AddTile(WindowId window, Rect frame, double pixels)
+    private void AddTile(int row, WindowId window, Rect unscrolledFrame, double shift, double pixels)
     {
+        unscrolled[window] = (row, unscrolledFrame);
+        var frame = unscrolledFrame.Offset(-shift, 0);
+        // Tiles scrolled out of view aren't built at all.
+        if (frame.MaxX < visibleColumns.Left || frame.MinX > visibleColumns.Right) return;
         var title = data!.Titles.GetValueOrDefault(window, "");
         var tile = new Button
         {
             Width = frame.Width,
             Height = frame.Height,
-            Padding = new Thickness(0),
             CornerRadius = new CornerRadius(8),
             BorderThickness = new Thickness(3),
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
@@ -310,14 +382,14 @@ internal sealed class OverviewWindow : Window
             Background = new SolidColorBrush(Colors.White) { Opacity = 0.08 },
             // Keyboard focus stays in the search box; arrows move the selection instead.
             IsTabStop = false,
-            Content = new TextBlock
+            Content = IconImages.Labeled(window, new TextBlock
             {
                 Text = title,
                 TextTrimming = TextTrimming.CharacterEllipsis,
-                Margin = new Thickness(8, 0, 8, 3),
                 FontSize = 12,
                 Foreground = new SolidColorBrush(Colors.White),
-            },
+            }),
+            Padding = new Thickness(8, 0, 8, 3),
         };
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(tile, title);
         tile.Click += (_, _) => Close(window);
@@ -332,7 +404,7 @@ internal sealed class OverviewWindow : Window
         if (Thumbnail.Create(hwnd, window) is { } thumbnail)
         {
             thumbnails[window] = thumbnail;
-            thumbnail.Show(new Rect(preview.X * pixels, preview.Y * pixels, preview.Width * pixels, preview.Height * pixels));
+            thumbnail.Show(ToPixels(preview, pixels), clip: VisibleBand(pixels));
         }
     }
 
@@ -340,8 +412,14 @@ internal sealed class OverviewWindow : Window
     {
         Canvas.SetLeft(element, x);
         Canvas.SetTop(element, y);
-        canvas.Children.Add(element);
+        (rowCanvas ?? canvas).Children.Add(element);
     }
+
+    private static Rect ToPixels(Rect rect, double pixels) => new(rect.X * pixels, rect.Y * pixels, rect.Width * pixels, rect.Height * pixels);
+
+    /// <summary>Where previews may draw, in pixels: DWM draws above XAML, so its clipping is done by hand.</summary>
+    private Rect VisibleBand(double pixels) =>
+        new(visibleColumns.Left * pixels, 0, (visibleColumns.Right - visibleColumns.Left) * pixels, root.ActualHeight * pixels);
 
     /// <summary>Highlights the selection and dims windows that don't match the filter.</summary>
     private void Restyle()
@@ -354,7 +432,7 @@ internal sealed class OverviewWindow : Window
             tile.BorderBrush = overview.Selection == window ? WorkspaceDisplay.Accent() : new SolidColorBrush(Colors.Transparent);
             tile.Opacity = match ? 1 : 0.25;
             if (thumbnails.TryGetValue(window, out var thumbnail))
-                thumbnail.Show(new Rect(preview.X * pixels, preview.Y * pixels, preview.Width * pixels, preview.Height * pixels), match ? (byte)255 : (byte)60);
+                thumbnail.Show(ToPixels(preview, pixels), match ? (byte)255 : (byte)60, VisibleBand(pixels));
         }
         matchCount.Text = overview.Matches switch
         {

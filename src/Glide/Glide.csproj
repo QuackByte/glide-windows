@@ -20,6 +20,8 @@
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <ApplicationIcon>Assets\Glide.ico</ApplicationIcon>
     <Version>0.1.0</Version>
+    <!-- Glide's UI is English; skip the .NET runtime's translated messages (smaller installer). -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <Product>Glide</Product>
   </PropertyGroup>
   <ItemGroup>
