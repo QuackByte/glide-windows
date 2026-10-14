@@ -2,6 +2,13 @@
 
 What's new in each version of Glide for Windows. Glide shows the new entries once after it updates, and each release's notes on GitHub come from here, so write for people using Glide. Add an entry for every change worth knowing about under the next version before tagging it.
 
+## 0.8.1 — 2026-10-14
+
+### Fixes
+
+- Clicking **Continue** in the What's new window closed Glide. Closing a window now leaves Glide running.
+- The tray icon shows every workspace in use: a 3×3 grid of the nine workspaces, the ones in use lit and the active one brightest. With only one in use, it shows the number as before.
+
 ## 0.8.0 — 2026-10-14
 
 ### New
