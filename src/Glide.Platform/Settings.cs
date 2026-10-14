@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Win32;
 using System.Text.Json.Serialization;
 using Glide.Core;
 
@@ -83,6 +84,26 @@ public sealed class Settings
         Shortcuts = keymap.Overrides.ToDictionary(p => p.Key.ToString(), p => p.Value?.ToString() ?? "none");
 
     public string ToJson() => JsonSerializer.Serialize(this, json);
+
+    /// <summary>
+    /// The installer's "Check for updates" choice, which it leaves in HKCU\Software\Glide since it
+    /// can't edit settings.json. Applied once, on the first start after a new install.
+    /// </summary>
+    public void ApplyInstallerChoices()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(@"Software\Glide", writable: true);
+            if (key?.GetValue("CheckForUpdates") is not int check) return;
+            CheckForUpdates = check != 0;
+            Save();
+            key.DeleteValue("CheckForUpdates");
+        }
+        catch (Exception e)
+        {
+            Log.Error("Couldn't apply the installer's choices", e);
+        }
+    }
 
     public Settings Clone() => JsonSerializer.Deserialize<Settings>(JsonSerializer.Serialize(this, json), json)!;
 
