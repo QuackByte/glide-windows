@@ -79,3 +79,6 @@ PostQuitMessage
 NOTIFYICON_VERSION_4
 TRACK_POPUP_MENU_FLAGS
 FindWindow
+DwmSetWindowAttribute
+AllowSetForegroundWindow
+IsWindowArranged

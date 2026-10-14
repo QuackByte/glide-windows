@@ -268,10 +268,27 @@ internal static unsafe class Native
             flags);
     }
 
-    /// <summary>Takes a maximized window out of the maximized state without activating it.</summary>
+    /// <summary>
+    /// Takes a window out of the maximized or snapped state without activating it. Windows keeps a
+    /// snapped window at its snap size, so it has to be un-snapped before Glide can size it.
+    /// </summary>
     public static void Unmaximize(HWND hwnd)
     {
-        if (PInvoke.IsZoomed(hwnd)) PInvoke.ShowWindow(hwnd, SHOW_WINDOW_CMD.SW_SHOWNOACTIVATE);
+        if (PInvoke.IsZoomed(hwnd) || IsSnapped(hwnd)) PInvoke.ShowWindow(hwnd, SHOW_WINDOW_CMD.SW_SHOWNOACTIVATE);
+    }
+
+    /// <summary>Snapped by Windows (Snap layouts, Win+arrows, or dragging to a screen edge).</summary>
+    public static bool IsSnapped(HWND hwnd)
+    {
+        try
+        {
+            return PInvoke.IsWindowArranged(hwnd);
+        }
+        catch (EntryPointNotFoundException)
+        {
+            // Before Windows 10 2004.
+            return false;
+        }
     }
 
     /// <summary>The primary display's work area (without the taskbar) and its scale factor.</summary>
@@ -282,6 +299,26 @@ internal static unsafe class Native
         PInvoke.GetMonitorInfo(monitor, ref info);
         var scale = PInvoke.GetDpiForMonitor(monitor, MONITOR_DPI_TYPE.MDT_EFFECTIVE_DPI, out var dpi, out _).Succeeded ? dpi / 96.0 : 1.0;
         return (ToRect(info.rcWork), scale);
+    }
+
+    // Focus ring
+
+    /// <summary>Colors a window's border (Windows 11; ignored on Windows 10). Null restores the default.</summary>
+    public static void SetBorderColor(HWND hwnd, uint? colorref)
+    {
+        // DWMWA_BORDER_COLOR = 34; DWMWA_COLOR_DEFAULT = 0xFFFFFFFF.
+        var value = colorref ?? 0xFFFFFFFF;
+        PInvoke.DwmSetWindowAttribute(hwnd, (DWMWINDOWATTRIBUTE)34, &value, sizeof(uint));
+    }
+
+    /// <summary>A COLORREF (0x00BBGGRR) from "accent" or "#RRGGBB"; the accent color if unreadable.</summary>
+    public static uint ParseColor(string color)
+    {
+        if (color.StartsWith('#') && color.Length == 7 && uint.TryParse(color[1..], System.Globalization.NumberStyles.HexNumber, null, out var rgb))
+            return ((rgb & 0xFF) << 16) | (rgb & 0xFF00) | ((rgb >> 16) & 0xFF);
+        using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\DWM");
+        // AccentColor is 0xAABBGGRR.
+        return key?.GetValue("AccentColor") is int accent ? (uint)accent & 0x00FFFFFF : 0x00D47800;
     }
 
     // Focus

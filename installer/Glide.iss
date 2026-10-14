@@ -33,6 +33,7 @@ OutputBaseFilename=Glide-{#Version}-{#Arch}-Setup
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=..\src\Glide\Assets\Glide.ico
 UninstallDisplayIcon={app}\Glide.exe
 UninstallDisplayName=Glide
 ; Glide is asked to quit (and restore its windows) below, not closed by Restart Manager.

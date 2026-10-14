@@ -36,6 +36,8 @@ internal sealed class WindowManager : IDisposable
     /// <summary>Glide just focused this window; ignore other foreground changes until the deadline.</summary>
     private (WindowId Window, long Until)? focusLock;
     private long workspaceSwitchLockUntil;
+    /// <summary>The window whose border Glide colored, and the color.</summary>
+    private (WindowId Window, uint Color)? ringed;
 
     public WindowManager(MessageWindow window, Settings settings)
     {
@@ -52,11 +54,65 @@ internal sealed class WindowManager : IDisposable
 
     public void ApplySettings(Settings newSettings)
     {
+        var rulesChanged = !newSettings.Rules.SequenceEqual(settings.Rules);
         settings = newSettings;
         rules = new AppRules(settings.Rules);
         if (!IsEnabled) return;
         UpdateDisplay();
+        placed.Clear();
+        if (rulesChanged) ReconcileRules();
         Layout(animate: false);
+        UpdateFocusRing();
+    }
+
+    /// <summary>
+    /// Applies changed rules to windows already open: tiled windows a rule now floats leave the
+    /// strip, and open windows a rule now tiles join it. Choices made by hand are kept.
+    /// </summary>
+    private void ReconcileRules()
+    {
+        foreach (var id in spaces.AllWindows)
+        {
+            var hwnd = Native.Hwnd(id);
+            if (!Native.Exists(hwnd) || ShouldTile(hwnd)) continue;
+            Float(id, hwnd);
+            Log.Info($"A rule floats {Describe(id)}");
+        }
+        foreach (var hwnd in Native.TopLevelWindows())
+        {
+            var id = Native.Id(hwnd);
+            if (spaces.IndexOf(id) is not null || departures.ContainsKey(id) || !ShouldTile(hwnd, out var rule)) continue;
+            spaces.Insert(id, rule?.WidthIndex ?? settings.DefaultWidthIndex(), rule?.Workspace, focus: false);
+            Log.Info($"A rule tiles {Describe(id)}");
+        }
+    }
+
+    /// <summary>Takes a window off the strip and puts it, smaller, in the middle of the screen.</summary>
+    private void Float(WindowId id, HWND hwnd)
+    {
+        spaces.Remove(id);
+        placed.Remove(id);
+        hidden.Remove(id);
+        motions.Remove(id);
+        Native.SetVisibleFrame(hwnd, FloatingFrame(hwnd), Native.BordersOf(hwnd));
+    }
+
+    /// <summary>
+    /// Colors the border of the focused window when it's tiled on the active workspace, and puts
+    /// back the border of the one before.
+    /// </summary>
+    private void UpdateFocusRing()
+    {
+        (WindowId Window, uint Color)? target = null;
+        if (IsEnabled && settings.FocusRing)
+        {
+            var foreground = Native.Id(Native.Foreground);
+            if (spaces.Active.Strip.Contains(foreground)) target = (foreground, Native.ParseColor(settings.FocusRingColor));
+        }
+        if (target == ringed) return;
+        if (ringed is var (old, _) && Native.Exists(Native.Hwnd(old))) Native.SetBorderColor(Native.Hwnd(old), null);
+        if (target is var (window, color)) Native.SetBorderColor(Native.Hwnd(window), color);
+        ringed = target;
     }
 
     // Enabling and disabling
@@ -102,6 +158,7 @@ internal sealed class WindowManager : IDisposable
         spaces.Active.EnsureFocusedVisible();
         Log.Info($"Tiling on: {spaces.AllWindows.Count} windows, workspace {ActiveWorkspaceNumber}: {spaces.Active.Strip}");
         Layout();
+        UpdateFocusRing();
         StateChanged?.Invoke();
     }
 
@@ -111,6 +168,8 @@ internal sealed class WindowManager : IDisposable
         if (!IsEnabled) return;
         FinishAnimations();
         SaveSnapshot();
+        IsEnabled = false;
+        UpdateFocusRing();
         var frames = spaces.AllWindows
             .Where(id => Native.Exists(Native.Hwnd(id)))
             .Select(id => (id, placed.TryGetValue(id, out var frame) ? frame : Native.VisibleFrame(Native.Hwnd(id)) ?? default))
@@ -130,7 +189,6 @@ internal sealed class WindowManager : IDisposable
         userFloating.Clear();
         userTiled.Clear();
         hidden.Clear();
-        IsEnabled = false;
         StateChanged?.Invoke();
     }
 
@@ -217,13 +275,10 @@ internal sealed class WindowManager : IDisposable
         var id = Native.Id(hwnd);
         if (spaces.IndexOf(id) is not null)
         {
-            spaces.Remove(id);
             userTiled.Remove(id);
             userFloating.Add(id);
-            placed.Remove(id);
-            hidden.Remove(id);
+            Float(id, hwnd);
             Layout();
-            Native.SetVisibleFrame(hwnd, FloatingFrame(hwnd), Native.BordersOf(hwnd));
             Native.Focus(hwnd);
         }
         else
@@ -284,6 +339,7 @@ internal sealed class WindowManager : IDisposable
                 OnUserMoveOrResize(id, hwnd);
                 break;
         }
+        UpdateFocusRing();
     }
 
     private void OnForeground(WindowId id, HWND hwnd)
@@ -484,7 +540,13 @@ internal sealed class WindowManager : IDisposable
             var hwnd = Native.Hwnd(placement.Window);
             if (Native.VisibleFrame(hwnd) is not { } actual) continue;
             var frame = placement.Frame;
-            if (actual.Width > frame.Width + 2 && actual.Width > workspace.MinimumWidths.GetValueOrDefault(placement.Window))
+            // A snapped window's size is Windows' doing, not a minimum the app insists on.
+            if (Native.IsSnapped(hwnd))
+            {
+                Native.Unmaximize(hwnd);
+                Native.SetVisibleFrame(hwnd, frame, borders[placement.Window] = Native.BordersOf(hwnd));
+            }
+            else if (actual.Width > frame.Width + 2 && actual.Width > workspace.MinimumWidths.GetValueOrDefault(placement.Window))
             {
                 workspace.MinimumWidths[placement.Window] = actual.Width;
                 learned = true;
