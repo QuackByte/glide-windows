@@ -44,8 +44,11 @@ public sealed class Settings
     public bool TrackpadSwipe { get; set; } = true;
     /// <summary>New windows (and, after a restart, open ones) go back to their app's usual monitor, workspace, width and place.</summary>
     public bool RememberApps { get; set; } = true;
-    /// <summary>Look for a newer Glide twice a day and offer it from the tray.</summary>
-    public bool CheckForUpdates { get; set; } = true;
+    /// <summary>
+    /// Look for a newer Glide twice a day and offer it from the tray. Off until the public
+    /// releases repository exists.
+    /// </summary>
+    public bool CheckForUpdates { get; set; }
     /// <summary>The public GitHub repository ("owner/name") whose releases carry Glide's installers.</summary>
     public string UpdateRepository { get; set; } = "QuackByte/glide-windows-releases";
     /// <summary>Overrides of the default shortcuts, by action name. "none" removes one.</summary>
