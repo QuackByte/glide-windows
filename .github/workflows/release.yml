@@ -1,22 +1,70 @@
 name: Release
 
-# Pushing a tag like v0.6.0 builds both installers and attaches them to a draft release,
-# to review, write notes for, and publish by hand.
+# Pushing a tag like v0.7.0 builds both installers and attaches them to a draft release,
+# to review, write notes for, and publish by hand. Glide's updater only sees published releases.
+#
+# Signing goes through SignPath (free for open source, certificate by SignPath Foundation) once
+# the SIGNPATH_ORGANIZATION_ID variable and SIGNPATH_API_TOKEN secret are set; until then the
+# installers are unsigned. See .signpath/README.md.
 on:
   push:
     tags: ['v*']
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   installers:
     runs-on: windows-latest
+    timeout-minutes: 120
+    env:
+      SIGN: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 9.0.x
+      - name: Publish
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          foreach ($platform in 'x64', 'ARM64') {
+            powershell -NoProfile -ExecutionPolicy Bypass -File installer\build.ps1 -Platform $platform -Version $version -PublishOnly
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
+
+      # Sign Glide's own binaries before they go into the installers.
+      - name: Upload the app for signing
+        id: app
+        if: env.SIGN == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-unsigned
+          path: |
+            artifacts/publish-x64
+            artifacts/publish-arm64
+      - name: Sign the app
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG }}
+          artifact-configuration-slug: app
+          github-artifact-id: ${{ steps.app.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: artifacts/signed-app
+      - name: Use the signed app
+        if: env.SIGN == 'true'
+        shell: pwsh
+        run: |
+          foreach ($arch in 'x64', 'arm64') {
+            Copy-Item "artifacts\signed-app\publish-$arch\*" "artifacts\publish-$arch" -Recurse -Force
+          }
+
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
       - name: Build installers
@@ -24,9 +72,38 @@ jobs:
         run: |
           $version = "${{ github.ref_name }}".TrimStart('v')
           foreach ($platform in 'x64', 'ARM64') {
-            powershell -NoProfile -ExecutionPolicy Bypass -File installer\build.ps1 -Platform $platform -Version $version
+            powershell -NoProfile -ExecutionPolicy Bypass -File installer\build.ps1 -Platform $platform -Version $version -PackageOnly
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
           }
+
+      - name: Upload the installers for signing
+        id: installers
+        if: env.SIGN == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-unsigned
+          path: artifacts/*-Setup.exe
+      - name: Sign the installers
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG }}
+          artifact-configuration-slug: installers
+          github-artifact-id: ${{ steps.installers.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: artifacts/signed-installers
+      - name: Use the signed installers
+        if: env.SIGN == 'true'
+        shell: pwsh
+        run: Copy-Item artifacts\signed-installers\*-Setup.exe artifacts -Force
+
+      - name: Checksums
+        shell: pwsh
+        run: |
           Get-ChildItem artifacts\*-Setup.exe | ForEach-Object {
             "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)"
           } | Out-File artifacts\SHA256SUMS.txt -Encoding ascii

@@ -7,9 +7,9 @@ using System.Text.Json.Serialization;
 namespace Glide.Platform;
 
 /// <summary>
-/// Finds newer releases and installs them. Releases come from a public GitHub repository (the
-/// source can stay private): its latest release has an installer per architecture and a
-/// SHA256SUMS.txt that every download is checked against before it runs.
+/// Finds newer releases and installs them. Releases come from Glide's GitHub repository: its latest
+/// release has an installer per architecture and a SHA256SUMS.txt that every download is checked
+/// against before it runs.
 /// </summary>
 internal sealed class Updater
 {
@@ -50,7 +50,7 @@ internal sealed class Updater
             using var response = await http.GetAsync($"https://api.github.com/repos/{repository}/releases/latest");
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
-                // No public release yet (or a private repository, which needs a login).
+                // No published release yet (drafts don't count).
                 if (!reportedMissing) Log.Info($"Updates: no public release at {repository}");
                 reportedMissing = true;
                 return null;
