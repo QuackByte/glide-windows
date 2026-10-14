@@ -13,6 +13,9 @@ public partial class App : Application
     private GlideHost? host;
     private Mutex? instance;
     private SettingsWindow? settingsWindow;
+    private OverviewWindow? overview;
+    private TabBars? tabBars;
+    private readonly WorkspaceDisplay workspaceDisplay = new();
 
     public App()
     {
@@ -65,6 +68,14 @@ public partial class App : Application
             return;
         }
         host.SettingsRequested += ShowSettings;
+        host.OverviewToggleRequested += ToggleOverview;
+        tabBars = new TabBars(host);
+        host.TabBarsChanged += tabBars.Show;
+        host.WorkspaceAnnounced += workspaceDisplay.Show;
+        host.StateChanged += () =>
+        {
+            if (!host.TilingEnabled) overview?.Close(goTo: null);
+        };
         AppDomain.CurrentDomain.ProcessExit += (_, _) =>
         {
             Log.Info("Process exiting");
@@ -88,6 +99,24 @@ public partial class App : Application
         {
             // The previous copy exited without releasing it; it's ours now.
             return true;
+        }
+    }
+
+    private void ToggleOverview()
+    {
+        if (host is null) return;
+        try
+        {
+            overview ??= new OverviewWindow(host);
+            if (overview.IsOpen)
+                overview.Close(goTo: null);
+            else
+                overview.Open();
+        }
+        catch (Exception e)
+        {
+            Log.Error("Overview failed", e);
+            host.OverviewOpen = false;
         }
     }
 

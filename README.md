@@ -2,7 +2,7 @@
 
 A keyboard-first scrolling window manager for Windows 11, the Windows counterpart of [Glide for macOS](https://github.com/QuackByte/glide). Windows are columns on an endless horizontal strip that you glide through with the keyboard, in the style of niri and PaperWM.
 
-Status: early. Tiling, workspaces, the Win-key shortcuts, the settings window and the focus ring work; tab bars, the overview and trackpad swipes are still to come. See [PLAN.md](PLAN.md).
+Status: early. Tiling, workspaces, tabs, the overview, the Win-key shortcuts, the settings window and the focus ring work; trackpad swipes, the crash watchdog and a signed release are still to come. See [PLAN.md](PLAN.md).
 
 ## Shortcuts
 
@@ -26,7 +26,7 @@ Glide takes over the Windows key the way FancyZones' "Override Windows Snap" doe
 | Toggle tabbed column | Win+Ctrl+W | |
 | Toggle floating | Win+Ctrl+V | Sound output flyout |
 | Enable or disable tiling | Win+Ctrl+Shift+T | |
-| Overview (not built yet; Task View still opens) | Win+Tab | Task View |
+| Overview | Win+Tab | Task View |
 
 Shortcuts follow key positions, like on macOS: Win+[ is the key right of P on any keyboard layout. While tiling is off, only Win+Ctrl+Shift+T stays with Glide; every other combo goes back to Windows.
 
@@ -72,6 +72,9 @@ Action names are those in [`Action.cs`](src/Glide.Core/Action.cs). `focusRingCol
 - Resizing a window with the mouse gives its column that width; dragging one snaps it back into place.
 - Turning tiling off (Win+Ctrl+Shift+T or the tray menu) or quitting puts every window back on screen, including those on other workspaces. The layout is saved and comes back when tiling is turned on again, until Windows restarts.
 - The focused tiled window gets a colored border (Windows 11).
+- **Overview** (Win+Tab): every workspace in use as a row of live window previews, to scale. Arrows select, Enter or a click goes to the window (switching workspace if needed), typing filters by app name and title, Esc clears the filter and then closes.
+- **Tabs** (Win+Ctrl+W): a column's windows become tabs, with a bar above the column. Win+↑/↓ or a click on a tab switches tabs; the bar never takes focus from the app.
+- **Workspaces**: switching or sending a column to another workspace shows the workspaces in use for a moment near the bottom of the screen.
 - The tray icon shows the active workspace; click it for the menu. `Glide.exe --quit` quits a running Glide.
 
 ## Build and run

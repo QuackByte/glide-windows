@@ -167,7 +167,24 @@ internal static unsafe class Native
         return ExecutableName(pid);
     }
 
-    public static string? ExecutableName(uint pid)
+    public static string? ExecutableName(uint pid) => ExecutablePath(pid) is { } path ? Path.GetFileName(path) : null;
+
+    /// <summary>The app's name as its executable describes itself ("Notepad"), else the file name.</summary>
+    public static string AppDescription(uint pid)
+    {
+        if (ExecutablePath(pid) is not { } path) return "";
+        try
+        {
+            var description = System.Diagnostics.FileVersionInfo.GetVersionInfo(path).FileDescription;
+            if (!string.IsNullOrWhiteSpace(description)) return description;
+        }
+        catch (IOException)
+        {
+        }
+        return Path.GetFileNameWithoutExtension(path);
+    }
+
+    public static string? ExecutablePath(uint pid)
     {
         var process = PInvoke.OpenProcess(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
         if (process.IsNull) return null;
@@ -179,7 +196,7 @@ internal static unsafe class Native
             {
                 if (!PInvoke.QueryFullProcessImageName(process, PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32, chars, &size)) return null;
             }
-            return Path.GetFileName(new string(buffer, 0, (int)size));
+            return new string(buffer, 0, (int)size);
         }
         finally
         {
