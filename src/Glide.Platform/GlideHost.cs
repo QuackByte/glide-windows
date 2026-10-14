@@ -13,7 +13,7 @@ namespace Glide.Platform;
 public sealed class GlideHost : IDisposable
 {
     /// <summary>Actions that need an app UI that doesn't exist yet; Windows keeps those shortcuts.</summary>
-    public static IReadOnlySet<GlideAction> Unavailable { get; } = new HashSet<GlideAction> { GlideAction.ToggleOverview };
+    public static IReadOnlySet<GlideAction> Unavailable { get; } = new HashSet<GlideAction>();
 
     private readonly Action<Action> post;
     private readonly Action quit;
@@ -63,6 +63,8 @@ public sealed class GlideHost : IDisposable
             Log.Info("Quit from the tray menu");
             Quit();
         };
+        manager.TabBarsChanged += bars => TabBarsChanged?.Invoke(bars);
+        manager.WorkspaceAnnounced += announcement => WorkspaceAnnounced?.Invoke(announcement);
         manager.StateChanged += () =>
         {
             tray.Update(manager.ActiveWorkspaceNumber, manager.IsEnabled);
@@ -122,6 +124,28 @@ public sealed class GlideHost : IDisposable
 
     /// <summary>The user asked for the settings window (tray menu, or launching Glide again).</summary>
     public event Action? SettingsRequested;
+
+    /// <summary>The overview shortcut was pressed: open the overview, or close it if it's open.</summary>
+    public event Action? OverviewToggleRequested;
+
+    /// <summary>Where tab bars go now; an empty list hides them.</summary>
+    public event Action<IReadOnlyList<TabBar>>? TabBarsChanged;
+
+    /// <summary>For the on-screen display: the workspace changed, or a column moved to another.</summary>
+    public event Action<WorkspaceAnnouncement>? WorkspaceAnnounced;
+
+    /// <summary>While the overview is open, Glide's other shortcuts do nothing.</summary>
+    public bool OverviewOpen { get; set; }
+
+    public OverviewData? MakeOverview() => manager.MakeOverview();
+
+    /// <summary>Goes to a tiled window, switching workspace if needed.</summary>
+    public void GoTo(WindowId window) => manager.GoTo(window);
+
+    /// <summary>The window in front, so the overview can give focus back when closed without a choice.</summary>
+    public static WindowId ForegroundWindow => Native.Id(Native.Foreground);
+
+    public static void Focus(WindowId window) => Native.Focus(Native.Hwnd(window));
 
     /// <summary>The settings file was edited outside the settings window.</summary>
     public event Action? SettingsChanged;
@@ -220,6 +244,12 @@ public sealed class GlideHost : IDisposable
     private void Run(GlideAction action)
     {
         if (disposed) return;
+        if (action == GlideAction.ToggleOverview)
+        {
+            if (manager.IsEnabled || OverviewOpen) OverviewToggleRequested?.Invoke();
+            return;
+        }
+        if (OverviewOpen && action != GlideAction.ToggleTiling) return;
         try
         {
             manager.Perform(action);

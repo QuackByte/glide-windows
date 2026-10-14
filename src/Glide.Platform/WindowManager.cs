@@ -49,6 +49,12 @@ internal sealed class WindowManager : IDisposable
     public bool IsEnabled { get; private set; }
     public int ActiveWorkspaceNumber => spaces.ActiveIndex + 1;
 
+    /// <summary>Where tab bars go now (empty while tiling is off).</summary>
+    public event Action<IReadOnlyList<TabBar>>? TabBarsChanged;
+
+    /// <summary>The workspace changed or a column went to another one: for the on-screen display.</summary>
+    public event Action<WorkspaceAnnouncement>? WorkspaceAnnounced;
+
     /// <summary>The workspace or the enabled state changed.</summary>
     public event Action? StateChanged;
 
@@ -109,6 +115,7 @@ internal sealed class WindowManager : IDisposable
             var foreground = Native.Id(Native.Foreground);
             if (spaces.Active.Strip.Contains(foreground)) target = (foreground, Native.ParseColor(settings.FocusRingColor));
         }
+        RefreshTabBars();
         if (target == ringed) return;
         if (ringed is var (old, _) && Native.Exists(Native.Hwnd(old))) Native.SetBorderColor(Native.Hwnd(old), null);
         if (target is var (window, color)) Native.SetBorderColor(Native.Hwnd(window), color);
@@ -246,6 +253,7 @@ internal sealed class WindowManager : IDisposable
             Log.Info($"Moved column to workspace {index + 1}");
             Layout();
             FocusActive();
+            Announce($"Column sent to workspace {index + 1}");
         }
         else
         {
@@ -267,6 +275,65 @@ internal sealed class WindowManager : IDisposable
         FocusActive();
         Log.Info($"Workspace {index + 1}: {spaces.Active.Strip}");
         StateChanged?.Invoke();
+        Announce(spaces.Active.Strip.IsEmpty ? $"Workspace {index + 1} is empty" : $"Workspace {index + 1}");
+    }
+
+    private void Announce(string message) =>
+        WorkspaceAnnounced?.Invoke(new WorkspaceAnnouncement(
+            [.. spaces.Occupied.Append(spaces.ActiveIndex).Distinct().Order().Select(i => (i + 1, i == spaces.ActiveIndex))], message));
+
+    // Overview and tabs
+
+    /// <summary>Everything the overview shows, taken when it opens; null while tiling is off.</summary>
+    public OverviewData? MakeOverview()
+    {
+        if (!IsEnabled) return null;
+        var titles = new Dictionary<WindowId, string>();
+        var search = new Dictionary<WindowId, string>();
+        foreach (var id in spaces.AllWindows)
+        {
+            var hwnd = Native.Hwnd(id);
+            var title = Native.Title(hwnd);
+            titles[id] = title;
+            search[id] = $"{Native.AppDescription(Native.ProcessId(hwnd))} {title}";
+        }
+        return new OverviewData(new Overview(spaces), titles, search, spaces.Viewport, spaces.ActiveIndex);
+    }
+
+    /// <summary>Shows and focuses a tiled window, switching workspace if needed (overview, tab bars).</summary>
+    public void GoTo(WindowId id)
+    {
+        if (!IsEnabled || spaces.IndexOf(id) is not int workspace) return;
+        if (workspace != spaces.ActiveIndex)
+        {
+            SwitchWorkspace(workspace, focusing: id);
+            return;
+        }
+        spaces.Active.Strip.Focus(id);
+        spaces.Active.EnsureFocusedVisible();
+        Layout();
+        FocusActive();
+    }
+
+    private string lastTabBars = "";
+
+    /// <summary>Tells the app where tab bars go, after windows have reached their places.</summary>
+    private void RefreshTabBars()
+    {
+        var bars = new List<TabBar>();
+        if (IsEnabled)
+        {
+            var foreground = Native.Id(Native.Foreground);
+            foreach (var bar in spaces.Active.TabBars())
+            {
+                bars.Add(new TabBar(bar.Frame, [.. bar.Windows.Select(w => (w, Native.Title(Native.Hwnd(w))))], bar.ActiveIndex,
+                                    bar.Windows.Contains(foreground)));
+            }
+        }
+        var key = string.Join("|", bars.Select(b => $"{b.Frame}{b.ActiveIndex}{b.IsFocused}{string.Join(",", b.Tabs)}"));
+        if (key == lastTabBars) return;
+        lastTabBars = key;
+        TabBarsChanged?.Invoke(bars);
     }
 
     private void ToggleFloating()
@@ -515,6 +582,7 @@ internal sealed class WindowManager : IDisposable
         else
         {
             StopAnimationTimer();
+            RefreshTabBars();
         }
         // Check where windows landed once they've had time to get there.
         window.StopTimer(SettleTimer);
@@ -576,6 +644,7 @@ internal sealed class WindowManager : IDisposable
         {
             motions = [];
             StopAnimationTimer();
+            RefreshTabBars();
         }
     }
 
@@ -656,3 +725,17 @@ internal static class SettingsExtensions
 {
     public static int DefaultWidthIndex(this Settings _) => LayoutSettings.Standard.DefaultWidthIndex;
 }
+
+/// <summary>A tab bar above a tabbed column, in screen pixels.</summary>
+/// <param name="IsFocused">The column holds the focused window, so its active tab is highlighted.</param>
+public sealed record TabBar(Rect Frame, IReadOnlyList<(WindowId Window, string Title)> Tabs, int ActiveIndex, bool IsFocused)
+{
+    public WindowId ActiveWindow => Tabs[ActiveIndex].Window;
+}
+
+/// <summary>The workspaces in use (and the active one), and what just happened.</summary>
+public sealed record WorkspaceAnnouncement(IReadOnlyList<(int Number, bool IsActive)> Workspaces, string Message);
+
+/// <summary>What the overview shows: the layout, window titles, what typing filters on, and the screen.</summary>
+public sealed record OverviewData(Overview Overview, IReadOnlyDictionary<WindowId, string> Titles,
+                                  IReadOnlyDictionary<WindowId, string> SearchText, Rect Viewport, int ActiveWorkspace);

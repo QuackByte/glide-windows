@@ -82,3 +82,13 @@ FindWindow
 DwmSetWindowAttribute
 AllowSetForegroundWindow
 IsWindowArranged
+DwmRegisterThumbnail
+DwmUnregisterThumbnail
+DwmUpdateThumbnailProperties
+DwmQueryThumbnailSourceSize
+DWM_THUMBNAIL_PROPERTIES
+SetWindowLong
+DWM_TNP_RECTDESTINATION
+DWM_TNP_RECTSOURCE
+DWM_TNP_VISIBLE
+DWM_TNP_OPACITY
