@@ -21,6 +21,7 @@ internal sealed unsafe class TrayIcon : IDisposable
     private readonly uint taskbarCreated = PInvoke.RegisterWindowMessage("TaskbarCreated");
     private HICON icon;
     private int workspace = 1;
+    private IReadOnlyList<int> inUse = [];
     private bool enabled = true;
     private bool added;
 
@@ -52,11 +53,13 @@ internal sealed unsafe class TrayIcon : IDisposable
     /// <summary>The toggle's shortcut, shown in the menu.</summary>
     public string ToggleShortcut { get; set; } = "";
 
-    public void Update(int workspaceNumber, bool tilingEnabled)
+    /// <param name="workspacesInUse">The workspaces with windows on them, listed in the tooltip and the menu; the icon shows only the active one.</param>
+    public void Update(int workspaceNumber, bool tilingEnabled, IReadOnlyList<int> workspacesInUse)
     {
-        if (workspaceNumber == workspace && tilingEnabled == enabled && added) return;
+        if (workspaceNumber == workspace && tilingEnabled == enabled && workspacesInUse.SequenceEqual(inUse) && added) return;
         workspace = workspaceNumber;
         enabled = tilingEnabled;
+        inUse = workspacesInUse;
         Modify();
     }
 
@@ -109,6 +112,7 @@ internal sealed unsafe class TrayIcon : IDisposable
         {
             var shortcut = ToggleShortcut.Length > 0 ? $"\t{ToggleShortcut}" : "";
             Append(menu, MENU_ITEM_FLAGS.MF_STRING | MENU_ITEM_FLAGS.MF_GRAYED, 0, $"Glide · Workspace {workspace}");
+            if (inUse.Count > 1) Append(menu, MENU_ITEM_FLAGS.MF_STRING | MENU_ITEM_FLAGS.MF_GRAYED, 0, $"In use: {string.Join(", ", inUse)}");
             Append(menu, MENU_ITEM_FLAGS.MF_SEPARATOR, 0, null);
             Append(menu, MENU_ITEM_FLAGS.MF_STRING | (enabled ? MENU_ITEM_FLAGS.MF_CHECKED : 0), ToggleCommand, $"Tiling{shortcut}");
             Append(menu, MENU_ITEM_FLAGS.MF_STRING | (StartupEntry.IsEnabled ? MENU_ITEM_FLAGS.MF_CHECKED : 0), StartAtSignInCommand, "Start Glide When I Sign In");
@@ -147,7 +151,8 @@ internal sealed unsafe class TrayIcon : IDisposable
             uCallbackMessage = CallbackMessage,
             hIcon = icon,
         };
-        data.szTip = $"Glide · Workspace {workspace}{(enabled ? "" : " · Tiling off")}";
+        var others = inUse.Count > 1 ? $" · In use: {string.Join(", ", inUse)}" : "";
+        data.szTip = $"Glide · Workspace {workspace}{others}{(enabled ? "" : " · Tiling off")}";
         data.Anonymous.uVersion = PInvoke.NOTIFYICON_VERSION_4;
         return data;
     }

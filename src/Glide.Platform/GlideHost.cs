@@ -80,10 +80,11 @@ public sealed class GlideHost : IDisposable
         };
         manager.TabBarsChanged += bars => TabBarsChanged?.Invoke(bars);
         manager.WorkspaceAnnounced += announcement => WorkspaceAnnounced?.Invoke(announcement);
+        manager.WorkspacesInUseChanged += UpdateTray;
         manager.StateChanged += () =>
         {
             keyboard.ScrollEnabled = manager.IsEnabled;
-            tray.Update(manager.ActiveWorkspaceNumber, manager.IsEnabled);
+            UpdateTray();
             StateChanged?.Invoke();
         };
 
@@ -102,6 +103,8 @@ public sealed class GlideHost : IDisposable
         });
         watchdog = Watchdog.Launch();
     }
+
+    private void UpdateTray() => tray.Update(manager.ActiveWorkspaceNumber, manager.IsEnabled, manager.WorkspacesInUse);
 
     /// <summary>Picks up edits to settings.json made by hand, a moment after they're saved.</summary>
     private FileSystemWatcher? WatchSettingsFile()
@@ -180,6 +183,7 @@ public sealed class GlideHost : IDisposable
         if (disposed) return null;
         availableUpdate = update;
         if (update is not null) tray.OfferUpdate(update.Version.ToString(3));
+        if (update is not null && settings.InstallUpdatesAutomatically) _ = InstallUpdateAsync();
         return update?.Version.ToString(3);
     }
 

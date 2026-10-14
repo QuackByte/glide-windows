@@ -34,6 +34,12 @@ public sealed class Settings
     public double FocusRingWidth { get; set; } = 4;
     /// <summary>"accent" for the Windows accent color, or "#RRGGBB".</summary>
     public string FocusRingColor { get; set; } = "accent";
+    /// <summary>Darkens the windows behind the focused one on its monitor.</summary>
+    public bool DimUnfocused { get; set; } = false;
+    /// <summary>How dark the dimming is, from 0.1 to 0.7.</summary>
+    public double DimAmount { get; set; } = 0.3;
+    /// <summary>The brief display of the workspace numbers when you switch.</summary>
+    public bool ShowWorkspaceDisplay { get; set; } = true;
     /// <summary>
     /// Whether Glide's shortcuts may take over combos Windows uses (Snap, Task View, virtual
     /// desktops…). Off gives those back to Windows, like FancyZones' "Override Windows Snap".
@@ -47,6 +53,8 @@ public sealed class Settings
     public bool RememberApps { get; set; } = true;
     /// <summary>Look for a newer Glide twice a day and offer it from the tray.</summary>
     public bool CheckForUpdates { get; set; } = true;
+    /// <summary>Install a newer version as soon as it's found, instead of waiting for a click on the tray icon.</summary>
+    public bool InstallUpdatesAutomatically { get; set; } = false;
     /// <summary>The GitHub repository ("owner/name") whose releases carry Glide's installers.</summary>
     public string UpdateRepository { get; set; } = "QuackByte/glide-windows";
     /// <summary>The version whose "What's new" was last shown; a newer Glide shows its own once.</summary>

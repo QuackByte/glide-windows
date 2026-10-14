@@ -184,6 +184,21 @@ public sealed partial class SettingsWindow : Window
         Card("Focus ring", "A colored ring around the focused window. Works with every app, including ones that draw their own title bar.", ring);
         Card("Focus ring color", null, colors);
         Card("Focus ring thickness", null, thickness);
+        var dimAmount = new Slider { Minimum = 0.1, Maximum = 0.7, StepFrequency = 0.05, Value = settings.DimAmount, Width = 220, IsEnabled = settings.DimUnfocused };
+        dimAmount.ValueChanged += (_, e) =>
+        {
+            settings.DimAmount = e.NewValue;
+            Apply();
+        };
+        var dim = Toggle(settings.DimUnfocused, on =>
+        {
+            settings.DimUnfocused = on;
+            dimAmount.IsEnabled = on;
+            Apply();
+        });
+        Card("Dim unfocused windows", "Darkens the windows behind the focused one on its monitor, so the focused window stands out.", Row(dimAmount, dim));
+        Card("Show workspace numbers when switching", "A brief display of the workspaces in use, near the bottom of the screen.",
+             Toggle(settings.ShowWorkspaceDisplay, on => { settings.ShowWorkspaceDisplay = on; Apply(); }));
 
         Section("Administrator");
         if (host.IsElevated)
@@ -220,6 +235,9 @@ public sealed partial class SettingsWindow : Window
         Card($"Glide {GlideHost.Version.ToString(3)}",
             "Glide looks for a newer version twice a day and offers it from the tray icon. Updates are checked against their checksums before they install.",
             Row(status, check, Toggle(settings.CheckForUpdates, on => { settings.CheckForUpdates = on; Apply(); })));
+        Card("Install updates automatically",
+             "Install a newer version as soon as Glide finds it, instead of waiting for a click on the tray icon. Glide restarts to finish.",
+             Toggle(settings.InstallUpdatesAutomatically, on => { settings.InstallUpdatesAutomatically = on; Apply(); }));
 
         Section("Files");
         var openSettings = new Button { Content = "Open settings file" };
