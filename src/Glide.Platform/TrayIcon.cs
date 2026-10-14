@@ -13,7 +13,9 @@ internal sealed unsafe class TrayIcon : IDisposable
 {
     private const uint CallbackMessage = Win32.WM_APP + 1;
     private const uint IconId = 1;
-    private const nuint ToggleCommand = 1, SettingsCommand = 2, StartAtSignInCommand = 3, QuitCommand = 4;
+    private const nuint ToggleCommand = 1, SettingsCommand = 2, StartAtSignInCommand = 3, QuitCommand = 4, UpdateCommand = 5;
+    private const uint NIN_BALLOONUSERCLICK = 0x0405;
+    private string? update;
 
     private readonly MessageWindow window;
     private readonly uint taskbarCreated = PInvoke.RegisterWindowMessage("TaskbarCreated");
@@ -30,6 +32,20 @@ internal sealed unsafe class TrayIcon : IDisposable
 
     public event Action? ToggleRequested;
     public event Action? SettingsRequested;
+    public event Action? UpdateRequested;
+
+    /// <summary>Offers a newer version in the menu, and says so once in a notification.</summary>
+    public void OfferUpdate(string version)
+    {
+        if (update == version) return;
+        update = version;
+        var data = Data();
+        data.uFlags |= NOTIFY_ICON_DATA_FLAGS.NIF_INFO;
+        data.szInfoTitle = $"Glide {version} is available";
+        data.szInfo = "Click to install it. Glide puts your windows back, updates, and starts again.";
+        data.dwInfoFlags = NOTIFY_ICON_INFOTIP_FLAGS.NIIF_INFO;
+        PInvoke.Shell_NotifyIcon(NOTIFY_ICON_MESSAGE.NIM_MODIFY, data);
+    }
     public event Action? QuitRequested;
 
     /// <summary>The toggle's shortcut, shown in the menu.</summary>
@@ -66,6 +82,7 @@ internal sealed unsafe class TrayIcon : IDisposable
                 case ToggleCommand: ToggleRequested?.Invoke(); break;
                 case SettingsCommand: SettingsRequested?.Invoke(); break;
                 case StartAtSignInCommand: StartupEntry.IsEnabled = !StartupEntry.IsEnabled; break;
+                case UpdateCommand: UpdateRequested?.Invoke(); break;
                 case QuitCommand: QuitRequested?.Invoke(); break;
                 default: return false;
             }
@@ -73,6 +90,11 @@ internal sealed unsafe class TrayIcon : IDisposable
         }
         if (message != CallbackMessage) return false;
         var notification = (uint)(lParam.Value & 0xFFFF);
+        if (notification == NIN_BALLOONUSERCLICK && update is not null)
+        {
+            UpdateRequested?.Invoke();
+            return true;
+        }
         if (notification is Win32.WM_CONTEXTMENU or Win32.NIN_SELECT or Win32.NIN_KEYSELECT or Win32.WM_LBUTTONUP)
             ShowMenu();
         return true;
@@ -89,6 +111,7 @@ internal sealed unsafe class TrayIcon : IDisposable
             Append(menu, MENU_ITEM_FLAGS.MF_STRING | (enabled ? MENU_ITEM_FLAGS.MF_CHECKED : 0), ToggleCommand, $"Tiling{shortcut}");
             Append(menu, MENU_ITEM_FLAGS.MF_STRING | (StartupEntry.IsEnabled ? MENU_ITEM_FLAGS.MF_CHECKED : 0), StartAtSignInCommand, "Start Glide When I Sign In");
             Append(menu, MENU_ITEM_FLAGS.MF_STRING, SettingsCommand, "Settings…");
+            if (update is not null) Append(menu, MENU_ITEM_FLAGS.MF_STRING, UpdateCommand, $"Install Glide {update}");
             Append(menu, MENU_ITEM_FLAGS.MF_SEPARATOR, 0, null);
             Append(menu, MENU_ITEM_FLAGS.MF_STRING, QuitCommand, "Quit Glide");
 

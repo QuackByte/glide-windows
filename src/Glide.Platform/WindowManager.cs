@@ -22,6 +22,7 @@ internal sealed class WindowManager : IDisposable
     /// <summary>How far one wheel notch moves the strip, as a share of the screen.</summary>
     private const double NotchFraction = 0.12;
     private static readonly string snapshotPath = Path.Combine(Settings.Directory, "layouts.json");
+    private static readonly string memoryPath = Path.Combine(Settings.Directory, "memory.json");
 
     /// <summary>One monitor: where it is, its scale, and its workspaces.</summary>
     private sealed class Display(MonitorInfo monitor)
@@ -64,6 +65,10 @@ internal sealed class WindowManager : IDisposable
     /// <summary>The window the user is dragging or resizing with the mouse; the ring waits until they let go.</summary>
     private WindowId? dragging;
     private IReadOnlyList<TabBar> currentTabBars = [];
+    /// <summary>Where apps go, learned from the layout: see <see cref="AppMemory"/>.</summary>
+    private AppMemory memory = LoadMemory();
+    /// <summary>Each tiled window's app, looked up once.</summary>
+    private readonly Dictionary<WindowId, string?> appIds = [];
 
     public WindowManager(MessageWindow window, Settings settings)
     {
@@ -215,26 +220,27 @@ internal sealed class WindowManager : IDisposable
             .Select(hwnd => (Id: Native.Id(hwnd), Hwnd: hwnd, Frame: Native.VisibleFrame(hwnd) ?? default))
             .OrderBy(w => w.Frame.X).ThenBy(w => w.Frame.Y)
             .ToList();
-        var known = snapshots.ToDictionary(p => p.Key, p => p.Value.AllWindows.ToHashSet());
+        // Windows from this session's saved layout go back exactly where they were.
         foreach (var display in displays)
         {
-            var mine = adopted.Where(w =>
-                    known.TryGetValue(display.Device, out var saved) ? saved.Contains(w.Id) || (!known.Values.Any(k => k.Contains(w.Id)) && DisplayOf(w.Hwnd) == display)
-                                                                      : !known.Values.Any(k => k.Contains(w.Id)) && DisplayOf(w.Hwnd) == display)
-                .Select(w => w.Id).ToList();
-            if (snapshots.TryGetValue(display.Device, out var snapshot))
-            {
-                var (strips, active) = snapshot.RestoreWorkspaces(mine, settings.DefaultWidthIndex(), display.Spaces.Settings.WidthPresets.Count);
-                display.Spaces.Restore(strips, active);
-            }
-            else
-            {
-                foreach (var id in mine) display.Spaces.Active.Strip.Insert(id, settings.DefaultWidthIndex(), at: display.Spaces.Active.Strip.Columns.Count, focus: false);
-            }
+            if (!snapshots.TryGetValue(display.Device, out var snapshot)) continue;
+            var saved = snapshot.AllWindows.ToHashSet();
+            var mine = adopted.Where(w => saved.Contains(w.Id)).Select(w => w.Id).ToList();
+            var (strips, active) = snapshot.RestoreWorkspaces(mine, settings.DefaultWidthIndex(), display.Spaces.Settings.WidthPresets.Count);
+            display.Spaces.Restore(strips, active);
         }
-        // A window the saved layout put on a monitor that's gone ends up nowhere: put it on the one it's on.
-        foreach (var (id, hwnd, _) in adopted.Where(w => Find(w.Id) is null))
-            DisplayOf(hwnd).Spaces.Active.Strip.Insert(id, settings.DefaultWidthIndex(), at: DisplayOf(hwnd).Spaces.Active.Strip.Columns.Count, focus: false);
+        // The rest (after a restart, or new since) go where their apps usually are, in the
+        // remembered order; apps Glide doesn't know join the monitor they're on, left to right.
+        var others = adopted.Where(w => Find(w.Id) is null)
+            .Select(w => (w.Id, Place: Remembered(w.Hwnd, rule: null)))
+            .GroupBy(w => (w.Place.Display, w.Place.Workspace));
+        foreach (var group in others)
+        {
+            var (target, index) = group.Key;
+            var strip = target.Spaces.Workspaces[index].Strip;
+            foreach (var (id, place) in memory.Arrange(target.Device, index, group.ToList(), w => AppIdOf(w.Id)))
+                strip.Insert(place.Column(id), at: strip.Columns.Count, focus: false);
+        }
 
         var foreground = Native.Id(Native.Foreground);
         focused = Find(foreground)?.Display ?? DisplayNamed(Native.MonitorAtCursor());
@@ -257,6 +263,7 @@ internal sealed class WindowManager : IDisposable
         if (!IsEnabled) return;
         FinishAnimations();
         SaveSnapshots();
+        LearnPlacements();
         IsEnabled = false;
         UpdateFocusRing();
         var restoredCount = 0;
@@ -681,11 +688,27 @@ internal sealed class WindowManager : IDisposable
             return;
         }
         if (!ShouldTile(hwnd, out var rule)) return;
-        // New windows join the monitor the app opened them on.
-        var display = DisplayOf(hwnd);
-        var target = display.Spaces.Insert(id, rule?.WidthIndex ?? settings.DefaultWidthIndex(), rule?.Workspace, focus);
-        if (focus) focused = display;
-        Log.Info($"Tiling {Describe(id)} on workspace {target + 1} of {display}: {display.Spaces.Workspaces[target].Strip}");
+        // New windows go where their app usually is (or the rule says); otherwise they join the
+        // monitor the app opened them on, right of the focused column.
+        var place = Remembered(hwnd, rule);
+        var (display, target) = (place.Display, place.Workspace);
+        var strip = display.Spaces.Workspaces[target].Strip;
+        var index = settings.RememberApps
+            ? memory.InsertionIndex(display.Device, target, AppIdOf(id), [.. strip.Columns.Select(c => AppIdOf(c.Windows[0]))])
+            : null;
+        strip.Insert(place.Column(id), index, focus);
+        if (target == display.Spaces.ActiveIndex || focus) display.Spaces.Workspaces[target].EnsureFocusedVisible();
+        Log.Info($"Tiling {Describe(id)} on workspace {target + 1} of {display}: {strip}");
+        if (focus)
+        {
+            focused = display;
+            // Just opened, and it belongs on another workspace: go there with it rather than hide it.
+            if (target != display.Spaces.ActiveIndex && Native.Foreground == hwnd)
+            {
+                SwitchWorkspace(target, focusing: id);
+                return;
+            }
+        }
         Layout();
     }
 
@@ -705,6 +728,7 @@ internal sealed class WindowManager : IDisposable
 
     private void Forget(WindowId id)
     {
+        appIds.Remove(id);
         departures.Remove(id);
         userFloating.Remove(id);
         userTiled.Remove(id);
@@ -820,6 +844,88 @@ internal sealed class WindowManager : IDisposable
         StateChanged?.Invoke();
     }
 
+    /// <summary>Where a window goes and how wide: its app's rule first, then where the app was last, then the defaults.</summary>
+    private sealed record Placement(Display Display, int Workspace, int WidthIndex, bool IsFullWidth, double? CustomWidth)
+    {
+        public Column Column(WindowId id) => new([id], widthIndex: WidthIndex, isFullWidth: IsFullWidth, customWidth: CustomWidth);
+    }
+
+    private Placement Remembered(HWND hwnd, AppRule? rule)
+    {
+        var id = Native.Id(hwnd);
+        var app = settings.RememberApps ? memory.Lookup(AppIdOf(id)) : null;
+        var display = app?.Monitor is { } monitor && displays.Any(d => d.Device == monitor) ? DisplayNamed(monitor) : DisplayOf(hwnd);
+        var workspace = rule?.Workspace ?? app?.Workspace ?? display.Spaces.ActiveIndex;
+        if (workspace is < 0 or >= WorkspaceSet.Count) workspace = display.Spaces.ActiveIndex;
+        if (rule?.WidthIndex is { } ruleWidth) return new Placement(display, workspace, ruleWidth, false, null);
+        if (app is null) return new Placement(display, workspace, settings.DefaultWidthIndex(), false, null);
+        var presets = display.Spaces.Settings.WidthPresets.Count;
+        return new Placement(display, workspace, app.WidthIndex >= 0 && app.WidthIndex < presets ? app.WidthIndex : settings.DefaultWidthIndex(),
+                             app.IsFullWidth, app.WidthFraction is { } fraction ? Math.Round(fraction * display.WorkArea.Width) : null);
+    }
+
+    private string? AppIdOf(WindowId id)
+    {
+        if (appIds.TryGetValue(id, out var app)) return app;
+        app = Native.Inspect(Native.Hwnd(id)).AppId;
+        appIds[id] = app;
+        return app;
+    }
+
+    /// <summary>Updates what Glide remembers about apps from the current layout, and saves it.</summary>
+    private void LearnPlacements()
+    {
+        if (!settings.RememberApps) return;
+        var strips = new List<AppMemory.Strip>();
+        foreach (var display in displays)
+        {
+            for (var index = 0; index < display.Spaces.Workspaces.Count; index++)
+            {
+                var columns = display.Spaces.Workspaces[index].Strip.Columns;
+                if (columns.Count == 0) continue;
+                strips.Add(new AppMemory.Strip(display.Device, index, display.WorkArea.Width,
+                    [.. columns.Select(c => (c, (IReadOnlyList<string?>)[.. c.Windows.Select(AppIdOf)]))]));
+            }
+        }
+        memory.Learn(strips);
+        try
+        {
+            Directory.CreateDirectory(Settings.Directory);
+            File.WriteAllText(memoryPath, memory.ToJson());
+        }
+        catch (Exception e)
+        {
+            Log.Error("Couldn't save where apps go", e);
+        }
+    }
+
+    private static AppMemory LoadMemory()
+    {
+        try
+        {
+            return File.Exists(memoryPath) ? AppMemory.FromJson(File.ReadAllText(memoryPath)) : new AppMemory();
+        }
+        catch (Exception e)
+        {
+            Log.Error("Couldn't read where apps go", e);
+            return new AppMemory();
+        }
+    }
+
+    /// <summary>Forgets every app's remembered place (Settings › Forget).</summary>
+    public void ForgetPlacements()
+    {
+        memory = new AppMemory();
+        try
+        {
+            File.Delete(memoryPath);
+        }
+        catch (IOException)
+        {
+        }
+        Log.Info("Forgot where apps go");
+    }
+
     private bool ShouldTile(HWND hwnd) => ShouldTile(hwnd, out _);
 
     private bool ShouldTile(HWND hwnd, out AppRule? rule)
@@ -828,6 +934,7 @@ internal sealed class WindowManager : IDisposable
         var facts = Native.Inspect(hwnd);
         if (!facts.IsCandidate) return false;
         var id = Native.Id(hwnd);
+        appIds[id] = facts.AppId;
         rule = rules.Rule(facts.AppId);
         return AppRules.ShouldTile(rule, facts.ClassifiedTileable, facts.CanTile, userFloating.Contains(id), userTiled.Contains(id));
     }
@@ -950,7 +1057,9 @@ internal sealed class WindowManager : IDisposable
         window.StartTimer(SnapshotTimer, 3000, () =>
         {
             window.StopTimer(SnapshotTimer);
-            if (IsEnabled) SaveSnapshots();
+            if (!IsEnabled) return;
+            SaveSnapshots();
+            LearnPlacements();
         });
         // Check where windows landed once they've had time to get there.
         window.StopTimer(SettleTimer);

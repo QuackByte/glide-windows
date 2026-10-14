@@ -57,6 +57,8 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 
 [Run]
 Filename: "{app}\Glide.exe"; Description: "Start Glide now"; Flags: nowait postinstall skipifsilent
+; Updates run silently with /UPDATE=1: start the new Glide when they're done.
+Filename: "{app}\Glide.exe"; Flags: nowait; Check: IsUpdate
 
 [UninstallRun]
 ; The sign-in task Glide creates when it runs as administrator. Removing it needs the same rights,
@@ -88,6 +90,11 @@ begin
   end;
   { The window goes first; give the process a moment to exit. }
   Sleep(500);
+end;
+
+function IsUpdate(): Boolean;
+begin
+  Result := ExpandConstant('{param:update|0}') = '1';
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;

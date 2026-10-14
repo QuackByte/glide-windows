@@ -57,6 +57,8 @@ Everything is stored in `%APPDATA%\Glide\settings.json` and applies as you chang
   "overrideWindowsShortcuts": true,
   "horizontalWheel": "Always",
   "trackpadSwipe": true,
+  "rememberApps": true,
+  "checkForUpdates": false,
   "shortcuts": {
     "FocusColumnLeft": "Win+J",
     "FocusColumnRight": "Win+K",
@@ -85,6 +87,8 @@ Action names are those in [`Action.cs`](src/Glide.Core/Action.cs). `focusRingCol
 - **Tabs** (Win+Ctrl+W): a column's windows become tabs, with a bar above the column. Win+↑/↓ or a click on a tab switches tabs; the bar never takes focus from the app.
 - **Touchpad**: on a precision touchpad, three-finger swipes left and right glide along the strip and snap to a column when you lift. Windows uses those swipes to switch apps too, so set Windows' three-finger gestures to "Nothing" (Settings › Bluetooth & devices › Touchpad); Glide's Settings links there.
 - **Mouse**: the horizontal wheel (tilting the wheel, or a thumb wheel like the MX Master's) glides along the strip and snaps to a column when you stop; Win + the vertical wheel does the same on any mouse. Settings › General › Mouse can limit the horizontal wheel to while Win is held, or give it back to apps.
+- **Apps go back where you keep them**: Glide remembers each app's monitor, workspace, column width and place on the strip. When you reopen an app, its window opens there, between the same neighbours; after a restart, open windows are arranged the same way. App rules still come first, and Settings › General can turn this off or forget everything.
+- **Updates** (off for now): Glide can look for a newer version twice a day and offer it from the tray icon; the installer is checked against the release's checksums, then Glide puts your windows back, updates and starts again. It needs a public repository for the installers (`updateRepository` in the settings file), which doesn't exist yet.
 - **If Glide crashes** or is ended from Task Manager, a small watchdog copy of Glide puts every window back on screen, and after a real crash it starts Glide again (at most once a minute), which re-tiles from the saved layout.
 - **Workspaces**: switching or sending a column to another workspace shows the workspaces in use for a moment near the bottom of the screen.
 - The tray icon shows the active workspace; click it for the menu. `Glide.exe --quit` quits a running Glide.

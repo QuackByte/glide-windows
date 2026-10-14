@@ -25,6 +25,9 @@ public sealed class GlideHost : IDisposable
     private readonly FileSystemWatcher? settingsWatcher;
     private readonly Process? watchdog;
     private readonly Touchpad touchpad;
+    private readonly Updater updater = new();
+    private Updater.Update? availableUpdate;
+    private const nuint UpdateTimer = 6;
     private SwipeTracker swipeTracker = new(fingerCount: 3);
     private bool touchpadRegistered;
     private bool reloadPending;
@@ -67,6 +70,7 @@ public sealed class GlideHost : IDisposable
         };
         tray.ToggleRequested += manager.Toggle;
         tray.SettingsRequested += () => SettingsRequested?.Invoke();
+        tray.UpdateRequested += () => _ = InstallUpdateAsync();
         tray.QuitRequested += () =>
         {
             Log.Info("Quit from the tray menu");
@@ -87,6 +91,13 @@ public sealed class GlideHost : IDisposable
         keyboard.ScrollEnabled = manager.IsEnabled;
         settingsWatcher = WatchSettingsFile();
         ApplyTouchpad();
+        // First look shortly after starting, then twice a day.
+        window.StartTimer(UpdateTimer, 30_000, () =>
+        {
+            window.StopTimer(UpdateTimer);
+            window.StartTimer(UpdateTimer, 12 * 60 * 60 * 1000, () => _ = CheckForUpdateAsync());
+            _ = CheckForUpdateAsync();
+        });
         watchdog = Watchdog.Launch();
     }
 
@@ -151,6 +162,33 @@ public sealed class GlideHost : IDisposable
     public bool OverviewOpen { get; set; }
 
     public OverviewData? MakeOverview() => manager.MakeOverview();
+
+    /// <summary>This copy's version.</summary>
+    public static Version Version => Updater.Current;
+
+    /// <summary>A newer version found by the last check, if any.</summary>
+    public string? AvailableUpdate => availableUpdate?.Version.ToString(3);
+
+    /// <summary>Looks for a newer release now; returns its version, or null.</summary>
+    public async Task<string?> CheckForUpdateAsync(bool evenIfOff = false)
+    {
+        if (disposed || (!settings.CheckForUpdates && !evenIfOff)) return null;
+        var update = await updater.CheckAsync(settings.UpdateRepository);
+        if (disposed) return null;
+        availableUpdate = update;
+        if (update is not null) tray.OfferUpdate(update.Version.ToString(3));
+        return update?.Version.ToString(3);
+    }
+
+    /// <summary>Downloads, verifies and runs the installer for the available update.</summary>
+    public async Task<bool> InstallUpdateAsync()
+    {
+        if (availableUpdate is not { } update) return false;
+        return await updater.InstallAsync(update);
+    }
+
+    /// <summary>Forgets where every app goes.</summary>
+    public void ForgetAppPlacements() => manager.ForgetPlacements();
 
     /// <summary>Goes to a tiled window, switching workspace if needed.</summary>
     public void GoTo(WindowId window) => manager.GoTo(window);
