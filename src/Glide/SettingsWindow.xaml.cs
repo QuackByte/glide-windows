@@ -112,11 +112,28 @@ public sealed partial class SettingsWindow : Window
         Section("Tiling");
         var tiling = Toggle(host.TilingEnabled, on => host.TilingEnabled = on);
         Card("Tile windows", $"Arrange windows as columns on a scrolling strip. {settings.Keymap.Combo(GlideAction.ToggleTiling)?.ToString() ?? "A shortcut"} turns it on or off from anywhere.", tiling);
-        Card("Start Glide when I sign in", null, Toggle(StartupEntry.IsEnabled, on => StartupEntry.IsEnabled = on));
+        Card("Start Glide when I sign in",
+            StartupEntry.StartsElevated ? "Starts as administrator." : host.IsElevated ? "Starts as administrator, like now." : null,
+            Toggle(StartupEntry.IsEnabled, on =>
+            {
+                StartupEntry.IsEnabled = on;
+                Render();
+            }));
         Card("Take over Windows shortcuts",
             "Win+arrows, Win+1…9, Win+Tab and a few others go to Glide instead of Snap, the taskbar and virtual desktops. " +
             "Turn this off to give them back to Windows; you can then give Glide's actions other shortcuts.",
             Toggle(settings.OverrideWindowsShortcuts, on => { settings.OverrideWindowsShortcuts = on; Apply(); }));
+
+        Section("Mouse");
+        var wheel = Choice(["Always scrolls the strip", "Scrolls the strip while Win is held", "Scrolls the app, as usual"], (int)settings.HorizontalWheel, 280);
+        wheel.SelectionChanged += (_, _) =>
+        {
+            settings.HorizontalWheel = (WheelMode)Math.Max(wheel.SelectedIndex, 0);
+            Apply();
+        };
+        Card("Horizontal wheel",
+            "Tilting the wheel, or a thumb wheel like the MX Master's, glides along the strip; it snaps to a column when you stop. " +
+            "Win + the vertical wheel always does, for mice without one.", wheel);
 
         Section("Appearance");
         var gap = new Slider { Minimum = 0, Maximum = 48, StepFrequency = 2, Value = settings.Gap, Width = 220 };

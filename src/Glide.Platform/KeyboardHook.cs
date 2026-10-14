@@ -17,15 +17,20 @@ namespace Glide.Platform;
 /// LowLevelHooksTimeout, so the hook runs on its own thread and the callback only matches and
 /// swallows; <paramref name="onAction"/> must hand the action to the UI thread and return.
 /// </remarks>
-internal sealed unsafe class KeyboardHook(Action<GlideAction> onAction) : IDisposable
+internal sealed unsafe class KeyboardHook(Action<GlideAction> onAction, Action<double> onScroll) : IDisposable
 {
     private volatile FrozenDictionary<KeyCombo, GlideAction> bindings = FrozenDictionary<KeyCombo, GlideAction>.Empty;
     private readonly HashSet<uint> swallowedKeys = [];
     /// <summary>Tags input Glide sends itself.</summary>
     private const nuint InjectedMarker = 0x476C6964; // "Glid"
 
-    private HOOKPROC? callback;
-    private HHOOK hook;
+    private HOOKPROC? callback, mouseCallback;
+    private HHOOK hook, mouseHook;
+
+    /// <summary>Scroll wheels move the strip only while tiling is on.</summary>
+    public volatile bool ScrollEnabled;
+    /// <summary>When the horizontal wheel (tilt, or a thumb wheel like the MX Master's) scrolls the strip.</summary>
+    public volatile WheelMode HorizontalWheel = WheelMode.Always;
     private Thread? thread;
     private uint threadId;
     /// <summary>A combo with Win fired since Win went down, so releasing Win must not open Start.</summary>
@@ -58,6 +63,9 @@ internal sealed unsafe class KeyboardHook(Action<GlideAction> onAction) : IDispo
                 callback = Callback;
                 hook = PInvoke.SetWindowsHookEx(WINDOWS_HOOK_ID.WH_KEYBOARD_LL, callback, (HINSTANCE)(nint)PInvoke.GetModuleHandle((string?)null).DangerousGetHandle(), 0);
                 Native.ThrowIfFailed(!hook.IsNull, "Installing the keyboard hook");
+                mouseCallback = MouseCallback;
+                mouseHook = PInvoke.SetWindowsHookEx(WINDOWS_HOOK_ID.WH_MOUSE_LL, mouseCallback, (HINSTANCE)(nint)PInvoke.GetModuleHandle((string?)null).DangerousGetHandle(), 0);
+                if (mouseHook.IsNull) Log.Error("Couldn't install the mouse hook; the wheel won't scroll the strip");
             }
             catch (Exception e)
             {
@@ -74,6 +82,7 @@ internal sealed unsafe class KeyboardHook(Action<GlideAction> onAction) : IDispo
                 PInvoke.DispatchMessage(message);
             }
             PInvoke.UnhookWindowsHookEx(hook);
+            if (!mouseHook.IsNull) PInvoke.UnhookWindowsHookEx(mouseHook);
         })
         {
             IsBackground = true,
@@ -137,6 +146,34 @@ internal sealed unsafe class KeyboardHook(Action<GlideAction> onAction) : IDispo
         return PInvoke.CallNextHookEx(hook, code, wParam, lParam);
     }
 
+    private const uint WM_MOUSEWHEEL = 0x020A, WM_MOUSEHWHEEL = 0x020E;
+
+    /// <summary>
+    /// The horizontal wheel scrolls the strip (always, or only with Win held, per the setting);
+    /// Win + the vertical wheel does too, for mice without one. Like the keyboard callback, this
+    /// only decides and swallows; the scrolling happens on the UI thread.
+    /// </summary>
+    private LRESULT MouseCallback(int code, WPARAM wParam, LPARAM lParam)
+    {
+        var message = (uint)wParam.Value;
+        if (code < 0 || !ScrollEnabled || message is not (WM_MOUSEWHEEL or WM_MOUSEHWHEEL))
+            return PInvoke.CallNextHookEx(mouseHook, code, wParam, lParam);
+        var info = (MSLLHOOKSTRUCT*)lParam.Value;
+        if (info->dwExtraInfo == InjectedMarker) return PInvoke.CallNextHookEx(mouseHook, code, wParam, lParam);
+
+        var win = IsDown(Win32.VK_LWIN) || IsDown(Win32.VK_RWIN);
+        var horizontal = message == WM_MOUSEHWHEEL;
+        var takes = horizontal ? HorizontalWheel == WheelMode.Always || (HorizontalWheel == WheelMode.WithWin && win) : win;
+        if (!takes) return PInvoke.CallNextHookEx(mouseHook, code, wParam, lParam);
+
+        var delta = (short)(info->mouseData >> 16) / 120.0;
+        // Tilting right or turning the thumb wheel forward goes right; the vertical wheel turned
+        // down (towards you) goes right too, like scrolling down a page.
+        onScroll(horizontal ? delta : -delta);
+        if (win) maskPending = true;
+        return (LRESULT)1;
+    }
+
     private static bool IsModifier(uint key) => key is Win32.VK_SHIFT or Win32.VK_CONTROL or Win32.VK_MENU
         or Win32.VK_LSHIFT or Win32.VK_RSHIFT or Win32.VK_LCONTROL or Win32.VK_RCONTROL or Win32.VK_LMENU or Win32.VK_RMENU;
 
@@ -172,8 +209,19 @@ internal sealed unsafe class KeyboardHook(Action<GlideAction> onAction) : IDispo
     public void Dispose()
     {
         if (thread is null) return;
+        ScrollEnabled = false;
         PInvoke.PostThreadMessage(threadId, Win32.WM_QUIT, default, default);
         thread.Join(TimeSpan.FromSeconds(2));
         thread = null;
     }
+}
+
+/// <summary>When the horizontal wheel scrolls the strip instead of the app under the pointer.</summary>
+public enum WheelMode
+{
+    /// <summary>Always: the thumb wheel is for moving along the strip.</summary>
+    Always,
+    /// <summary>Only while Win is held; otherwise apps get horizontal scrolling as usual.</summary>
+    WithWin,
+    Off,
 }

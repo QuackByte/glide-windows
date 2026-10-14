@@ -2,7 +2,7 @@
 
 A keyboard-first scrolling window manager for Windows 11, the Windows counterpart of [Glide for macOS](https://github.com/QuackByte/glide). Windows are columns on an endless horizontal strip that you glide through with the keyboard, in the style of niri and PaperWM.
 
-Status: early. Tiling, workspaces, tabs, the overview, the Win-key shortcuts, the settings window and the focus ring work; trackpad swipes, the crash watchdog and a signed release are still to come. See [PLAN.md](PLAN.md).
+Status: early. Tiling, workspaces, tabs, the overview, the Win-key shortcuts, mouse-wheel scrolling, the settings window, the focus ring and the crash watchdog work; trackpad swipes, multiple monitors and a signed release are still to come. See [PLAN.md](PLAN.md).
 
 ## Shortcuts
 
@@ -39,7 +39,7 @@ Open Settings from the tray menu, or launch Glide again from the Start menu whil
 - **General**: turn tiling on or off, start at sign-in, the gap between windows, the slide animation, and the focus ring and its color.
 - **Take over Windows shortcuts**: turn this off to give Windows back the combos Glide replaces, like FancyZones' "Override Windows Snap". Glide then only gets the shortcuts that don't clash.
 - **App rules**: per app, always float, always tile or decide automatically, plus a column width and a workspace for new windows. Rules apply to open windows right away; a window you floated or tiled by hand with Win+Ctrl+V keeps your choice.
-- **Restart as administrator**: Windows doesn't let a normal app move the windows of apps running as administrator, nor see keys while one is focused. Restart Glide as administrator from General to manage them too.
+- **Restart as administrator**: Windows doesn't let a normal app move the windows of apps running as administrator, nor see keys while one is focused. Restart Glide as administrator from General to manage them too. Turning on "Start Glide when I sign in" while it runs as administrator makes it start that way every time (through a scheduled task, without a prompt).
 
 Everything is stored in `%APPDATA%\Glide\settings.json` and applies as you change it. The file can also be edited by hand; Glide picks up the changes when it's saved:
 
@@ -50,6 +50,7 @@ Everything is stored in `%APPDATA%\Glide\settings.json` and applies as you chang
   "focusRing": true,
   "focusRingColor": "accent",
   "overrideWindowsShortcuts": true,
+  "horizontalWheel": "Always",
   "shortcuts": {
     "FocusColumnLeft": "Win+J",
     "FocusColumnRight": "Win+K",
@@ -62,7 +63,7 @@ Everything is stored in `%APPDATA%\Glide\settings.json` and applies as you chang
 }
 ```
 
-Action names are those in [`Action.cs`](src/Glide.Core/Action.cs). `focusRingColor` is `accent` or `#RRGGBB`. In rules, `mode` is `Automatic`, `Float` or `Tile`, `widthIndex` picks ⅓, ½, ⅔ or full (0–3), and `workspace` is zero-based.
+Action names are those in [`Action.cs`](src/Glide.Core/Action.cs). `focusRingColor` is `accent` or `#RRGGBB`; `horizontalWheel` is `Always`, `WithWin` or `Off`. In rules, `mode` is `Automatic`, `Float` or `Tile`, `widthIndex` picks ⅓, ½, ⅔ or full (0–3), and `workspace` is zero-based.
 
 ## How it behaves
 
@@ -74,6 +75,8 @@ Action names are those in [`Action.cs`](src/Glide.Core/Action.cs). `focusRingCol
 - The focused tiled window gets a colored border (Windows 11).
 - **Overview** (Win+Tab): every workspace in use as a row of live window previews, to scale. Arrows select, Enter or a click goes to the window (switching workspace if needed), typing filters by app name and title, Esc clears the filter and then closes.
 - **Tabs** (Win+Ctrl+W): a column's windows become tabs, with a bar above the column. Win+↑/↓ or a click on a tab switches tabs; the bar never takes focus from the app.
+- **Mouse**: the horizontal wheel (tilting the wheel, or a thumb wheel like the MX Master's) glides along the strip and snaps to a column when you stop; Win + the vertical wheel does the same on any mouse. Settings › General › Mouse can limit the horizontal wheel to while Win is held, or give it back to apps.
+- **If Glide crashes** or is ended from Task Manager, a small watchdog copy of Glide puts every window back on screen, and after a real crash it starts Glide again (at most once a minute), which re-tiles from the saved layout.
 - **Workspaces**: switching or sending a column to another workspace shows the workspaces in use for a moment near the bottom of the screen.
 - The tray icon shows the active workspace; click it for the menu. `Glide.exe --quit` quits a running Glide.
 
