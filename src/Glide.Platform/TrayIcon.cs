@@ -160,7 +160,7 @@ internal sealed unsafe class TrayIcon : IDisposable
     private void RenderIcon()
     {
         var old = icon;
-        icon = IconRenderer.Render(workspace, enabled, LightTaskbar());
+        icon = IconRenderer.Render(workspace, inUse, enabled, LightTaskbar());
         if (!old.IsNull) PInvoke.DestroyIcon(old);
     }
 
@@ -196,14 +196,18 @@ internal sealed unsafe class TrayIcon : IDisposable
     }
 }
 
-/// <summary>Draws the tray icon: a rounded square with the workspace number knocked out of it.</summary>
+/// <summary>
+/// Draws the tray icon: a rounded square with the workspace number knocked out of it. With several
+/// workspaces in use, a 3×3 grid of the nine workspaces instead, the ones in use lit and the active one brightest.
+/// </summary>
 internal static unsafe class IconRenderer
 {
-    public static HICON Render(int number, bool enabled, bool lightTaskbar)
+    public static HICON Render(int number, IReadOnlyList<int> inUse, bool enabled, bool lightTaskbar)
     {
         var dpi = PInvoke.GetDpiForSystem();
         var size = PInvoke.GetSystemMetricsForDpi(SYSTEM_METRICS_INDEX.SM_CXSMICON, dpi);
         var text = DigitCoverage(number.ToString(), size);
+        var map = inUse.Count > 1 ? MiniMap(size, number, inUse) : null;
 
         var info = new BITMAPINFO();
         info.bmiHeader = new BITMAPINFOHEADER
@@ -227,8 +231,9 @@ internal static unsafe class IconRenderer
         {
             for (var x = 0; x < size; x++)
             {
-                var shape = RoundedSquareCoverage(x + 0.5, y + 0.5, inset, size - inset, radius);
-                var alpha = shape * (1 - text[y * size + x]) * opacity;
+                var alpha = map is not null
+                    ? map[y * size + x] * opacity
+                    : RoundedSquareCoverage(x + 0.5, y + 0.5, inset, size - inset, radius) * (1 - text[y * size + x]) * opacity;
                 var a = (uint)Math.Round(alpha * 255);
                 // Icons take straight (not premultiplied) BGRA.
                 pixels[y * size + x] = (a << 24) | rgb;
@@ -240,6 +245,26 @@ internal static unsafe class IconRenderer
         PInvoke.DeleteObject(color);
         PInvoke.DeleteObject(mask);
         return icon;
+    }
+
+    /// <summary>Nine squares in a 3×3 grid, numbered in reading order: the active one fully lit, the others in use half, the rest faint.</summary>
+    private static double[] MiniMap(int size, int active, IReadOnlyList<int> inUse)
+    {
+        var map = new double[size * size];
+        var cell = Math.Max(1, size / 4);
+        var gap = Math.Max(1, size / 16);
+        var grid = 3 * cell + 2 * gap;
+        var origin = (size - grid) / 2;
+        for (var number = 1; number <= 9; number++)
+        {
+            var left = origin + (number - 1) % 3 * (cell + gap);
+            var top = origin + (number - 1) / 3 * (cell + gap);
+            var level = number == active ? 1.0 : inUse.Contains(number) ? 0.5 : 0.18;
+            for (var y = top; y < top + cell; y++)
+                for (var x = left; x < left + cell; x++)
+                    map[y * size + x] = level;
+        }
+        return map;
     }
 
     private static double RoundedSquareCoverage(double x, double y, double min, double max, double radius)
