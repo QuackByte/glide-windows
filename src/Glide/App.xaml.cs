@@ -18,6 +18,8 @@ public partial class App : Application
     private OverviewWindow? overview;
     private TabBars? tabBars;
     private readonly WorkspaceDisplay workspaceDisplay = new();
+    /// <summary>Never shown. Keeps the app running when the last visible window closes; Quit closes it.</summary>
+    private Window? anchor;
 
     public App()
     {
@@ -69,6 +71,7 @@ public partial class App : Application
             Exit();
             return;
         }
+        anchor = new Window();
         host.SettingsRequested += ShowSettings;
         host.WhatsNewRequested += () => ShowWhatsNew(WhatsNewWindow.History.Releases);
         host.OverviewToggleRequested += ToggleOverview;
@@ -159,6 +162,7 @@ public partial class App : Application
             workspaceDisplay.Close();
             settingsWindow?.Close();
             whatsNewWindow?.Close();
+            anchor?.Close();
         }
         catch (Exception e)
         {
