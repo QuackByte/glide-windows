@@ -7,4 +7,3 @@ Update checks: to keep itself up to date, Glide asks GitHub (api.github.com) abo
 You can turn update checks off on the next page of this installer, or later in Glide's Settings, under Updates.
 
 Full policy: https://quackbyte.dev/glide/privacy/
-Code signing policy: https://quackbyte.dev/glide/code-signing/

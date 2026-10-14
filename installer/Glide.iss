@@ -38,8 +38,8 @@ UninstallDisplayIcon={app}\Glide.exe
 UninstallDisplayName=Glide
 ; Glide is asked to quit (and restore its windows) below, not closed by Restart Manager.
 CloseApplications=no
-; SignPath Foundation asks that software which contacts a server shows its privacy policy while
-; installing and offers to turn that off (the "updates" task below).
+; Glide contacts GitHub for updates, so the installer shows its privacy policy and offers to turn
+; that off (the "updates" task below).
 InfoBeforeFile=Privacy.txt
 
 [Tasks]
