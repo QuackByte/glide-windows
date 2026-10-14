@@ -8,7 +8,7 @@ Status: early. Tiling on every monitor, workspaces, stacks and tabs, the overvie
 
 Download the installer for your PC (x64, or ARM64 for Arm PCs such as Snapdragon laptops) from the [latest release](https://github.com/QuackByte/glide-windows/releases/latest) or [quackbyte.dev/glide](https://quackbyte.dev/glide/). It installs for your user only, without administrator rights, and keeps itself up to date.
 
-Releases are signed with a certificate from [SignPath Foundation](https://signpath.org), free code signing for open-source projects provided by [SignPath.io](https://signpath.io). See the [code signing policy](https://quackbyte.dev/glide/code-signing/).
+Releases aren't code-signed yet, so Windows SmartScreen may warn the first time you run Glide: choose **More info › Run anyway**.
 
 ## Shortcuts
 
