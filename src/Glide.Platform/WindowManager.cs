@@ -62,6 +62,8 @@ internal sealed class WindowManager : IDisposable
     /// <summary>The window whose border Glide colored, and the color.</summary>
     private (WindowId Window, uint Color)? ringed;
     private readonly FocusRingWindow ring = new();
+    private readonly DimWindow dimming = new();
+    private IReadOnlyList<int> workspacesInUse = [];
     /// <summary>The window the user is dragging or resizing with the mouse; the ring waits until they let go.</summary>
     private WindowId? dragging;
     private IReadOnlyList<TabBar> currentTabBars = [];
@@ -92,6 +94,11 @@ internal sealed class WindowManager : IDisposable
 
     /// <summary>The workspace or the enabled state changed.</summary>
     public event Action? StateChanged;
+
+    /// <summary>The numbers of the workspaces with windows on them on the focused monitor, the active one included.</summary>
+    public event Action? WorkspacesInUseChanged;
+
+    public IReadOnlyList<int> WorkspacesInUse => displays.Count == 0 ? [1] : [.. spaces.Occupied.Append(spaces.ActiveIndex).Distinct().Order().Select(i => i + 1)];
 
     private IEnumerable<WindowId> AllWindows => displays.SelectMany(d => d.Spaces.AllWindows);
 
@@ -163,19 +170,41 @@ internal sealed class WindowManager : IDisposable
     private void UpdateFocusRing(bool landed)
     {
         (WindowId Window, uint Color)? target = null;
-        if (IsEnabled && settings.FocusRing)
+        if (IsEnabled)
         {
             var foreground = Native.Id(Native.Foreground);
             if (Find(foreground) is var (display, _) && display.Spaces.Active.Strip.Contains(foreground))
                 target = (foreground, Native.ParseColor(settings.FocusRingColor));
         }
         RefreshTabBars();
+        RefreshWorkspacesInUse();
+        DrawDimming(target?.Window);
+        if (!settings.FocusRing) target = null;
         DrawRing(target, landed);
         if (target == ringed) return;
         // Windows' own border too, as the ring's inner edge, where the app has one.
         if (ringed is var (old, _) && Native.Exists(Native.Hwnd(old))) Native.SetBorderColor(Native.Hwnd(old), null);
         if (target is var (window, color)) Native.SetBorderColor(Native.Hwnd(window), color);
         ringed = target;
+    }
+
+    /// <summary>Dims the monitor behind the focused tiled window, when that's on.</summary>
+    private void DrawDimming(WindowId? focused)
+    {
+        if (!settings.DimUnfocused || focused is not { } id || hidden.Contains(id) || Find(id) is not var (display, _))
+        {
+            dimming.Hide();
+            return;
+        }
+        dimming.Show(Native.Hwnd(id), display.Monitor.Bounds, Math.Clamp(settings.DimAmount, 0.1, 0.7));
+    }
+
+    private void RefreshWorkspacesInUse()
+    {
+        var current = WorkspacesInUse;
+        if (current.SequenceEqual(workspacesInUse)) return;
+        workspacesInUse = current;
+        WorkspacesInUseChanged?.Invoke();
     }
 
     /// <summary>Shows the ring around the focused window once it's in place: not while it slides, waits hidden, or is being dragged.</summary>
@@ -1207,6 +1236,7 @@ internal sealed class WindowManager : IDisposable
         Disable();
         StopAnimationTimer();
         ring.Dispose();
+        dimming.Dispose();
     }
 }
 

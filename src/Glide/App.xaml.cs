@@ -74,7 +74,10 @@ public partial class App : Application
         host.OverviewToggleRequested += ToggleOverview;
         tabBars = new TabBars(host);
         host.TabBarsChanged += tabBars.Show;
-        host.WorkspaceAnnounced += workspaceDisplay.Show;
+        host.WorkspaceAnnounced += announcement =>
+        {
+            if (host.Settings.ShowWorkspaceDisplay) workspaceDisplay.Show(announcement);
+        };
         host.StateChanged += () =>
         {
             if (!host.TilingEnabled) overview?.Close(goTo: null);
