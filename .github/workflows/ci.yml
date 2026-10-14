@@ -30,3 +30,19 @@ jobs:
         with:
           dotnet-version: 9.0.x
       - run: dotnet build src/Glide/Glide.csproj --configuration Release -p:Platform=${{ matrix.platform }}
+
+  installer:
+    name: Installer (x64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+      - name: Build the installer
+        shell: pwsh
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File installer\build.ps1 -Platform x64 -Version 0.0.0
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
