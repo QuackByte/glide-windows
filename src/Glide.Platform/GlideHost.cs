@@ -286,7 +286,7 @@ public sealed class GlideHost : IDisposable
             // Given back to Windows: combos that replace a Windows feature stay Windows'.
             .Where(b => settings.OverrideWindowsShortcuts || ShortcutPolicy.ReplacedWindowsFeature(b.Combo) is null)
             .Select(b => (b.Combo, b.Action)));
-        tray.ToggleShortcut = keymap.Combo(GlideAction.ToggleTiling)?.ToString() ?? "";
+        tray.ToggleShortcut = keymap.Combo(GlideAction.ToggleTiling) is { } toggle ? KeyLabels.Describe(toggle) : "";
     }
 
     // Other instances

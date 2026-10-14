@@ -15,7 +15,7 @@ Glide takes over the Windows key the way FancyZones' "Override Windows Snap" doe
 | Focus first / last column | Win+Home / End | Minimize other windows (Home) |
 | Move column left / right | Win+Shift+← / → | Move to another monitor |
 | Move window up / down | Win+Shift+↑ / ↓ | Stretch vertically |
-| Consume or expel window left / right | Win+[ / ] | |
+| Stack into the column on the left / right, or unstack | Win+[ / ] (the two keys right of P) | |
 | Switch to workspace 1…9 | Win+1…9 | Open the Nth taskbar app |
 | Send column to workspace 1…9 | Win+Shift+1…9 | New instance of the Nth taskbar app |
 | Previous / next workspace | Win+Ctrl+← / → | Switch virtual desktop |
@@ -28,7 +28,9 @@ Glide takes over the Windows key the way FancyZones' "Override Windows Snap" doe
 | Enable or disable tiling | Win+Ctrl+Shift+T | |
 | Overview | Win+Tab | Task View |
 
-Shortcuts follow key positions, like on macOS: Win+[ is the key right of P on any keyboard layout. While tiling is off, only Win+Ctrl+Shift+T stays with Glide; every other combo goes back to Windows.
+Shortcuts follow key positions, like on macOS: Win+[ is the key right of P on any keyboard layout (the accent key on a Spanish keyboard), and Settings shows each shortcut with your keyboard's own labels.
+
+**Stacks**: Win+[ puts the focused window at the bottom of the column on its left, so the two share it, one above the other; Win+] does the same to the right. Pressed on a window that's already in a stack, they move it out into its own column on that side. Win+↑/↓ move between stacked windows, Win+Shift+↑/↓ reorder them, and Win+Ctrl+W turns the stack into tabs. While tiling is off, only Win+Ctrl+Shift+T stays with Glide; every other combo goes back to Windows.
 
 ### Rebinding
 

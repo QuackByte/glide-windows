@@ -149,6 +149,17 @@ public static class KeyCode
     public static uint ByPosition(uint keyCode, uint scanCode, bool extended) =>
         !extended && usKeys.TryGetValue(scanCode, out var us) ? us : keyCode;
 
+    /// <summary>
+    /// The physical key (scan code) a main-block key code stands for, so its label can be looked
+    /// up in the user's keyboard layout; null for keys outside the main block.
+    /// </summary>
+    public static uint? ScanCode(uint keyCode)
+    {
+        foreach (var (scan, us) in usKeys)
+            if (us == keyCode) return scan;
+        return null;
+    }
+
     public static string Name(uint keyCode)
     {
         if (names.TryGetValue(keyCode, out var name)) return name;

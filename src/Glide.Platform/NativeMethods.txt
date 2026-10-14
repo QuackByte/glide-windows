@@ -95,3 +95,7 @@ DWM_TNP_OPACITY
 MSLLHOOKSTRUCT
 WaitForSingleObject
 GetExitCodeProcess
+ToUnicodeEx
+MapVirtualKeyEx
+GetKeyboardLayout
+GetWindowThreadProcessId

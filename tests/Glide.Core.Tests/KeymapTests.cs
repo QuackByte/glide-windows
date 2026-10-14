@@ -155,6 +155,8 @@ public class KeymapTests
         // AZERTY's A key sits where US has Q.
         Assert.Equal('Q', (char)KeyCode.ByPosition('A', scanCode: 0x10, extended: false));
         Assert.Equal('1', (char)KeyCode.ByPosition('1', scanCode: 0x02, extended: false));
+        Assert.Equal(0x1Au, KeyCode.ScanCode(KeyCode.LeftBracket)); // Back from the key to where it is
+        Assert.Null(KeyCode.ScanCode(KeyCode.LeftArrow));
         // Arrows are extended keys and keep their code.
         Assert.Equal(KeyCode.LeftArrow, KeyCode.ByPosition(KeyCode.LeftArrow, scanCode: 0x4B, extended: true));
     }
