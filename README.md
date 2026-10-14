@@ -2,7 +2,7 @@
 
 A keyboard-first scrolling window manager for Windows 11, the Windows counterpart of [Glide for macOS](https://github.com/QuackByte/glide). Windows are columns on an endless horizontal strip that you glide through with the keyboard, in the style of niri and PaperWM.
 
-Status: early. Tiling, workspaces, tabs, the overview, the Win-key shortcuts, mouse-wheel scrolling, the settings window, the focus ring and the crash watchdog work; trackpad swipes, multiple monitors and a signed release are still to come. See [PLAN.md](PLAN.md).
+Status: early. Tiling on every monitor, workspaces, stacks and tabs, the overview, the Win-key shortcuts, mouse-wheel and touchpad scrolling, the settings window, the focus ring and the crash watchdog work; a signed release is still to come. See [PLAN.md](PLAN.md).
 
 ## Shortcuts
 
@@ -25,6 +25,8 @@ Glide takes over the Windows key the way FancyZones' "Override Windows Snap" doe
 | Center column | Win+Ctrl+C | Color filters |
 | Toggle tabbed column | Win+Ctrl+W | |
 | Toggle floating | Win+Ctrl+V | Sound output flyout |
+| Focus monitor left / right | Win+Alt+← / → | |
+| Send column to monitor left / right | Win+Alt+Shift+← / → | |
 | Enable or disable tiling | Win+Ctrl+Shift+T | |
 | Overview | Win+Tab | Task View |
 
@@ -51,8 +53,10 @@ Everything is stored in `%APPDATA%\Glide\settings.json` and applies as you chang
   "animate": true,
   "focusRing": true,
   "focusRingColor": "accent",
+  "focusRingWidth": 4,
   "overrideWindowsShortcuts": true,
   "horizontalWheel": "Always",
+  "trackpadSwipe": true,
   "shortcuts": {
     "FocusColumnLeft": "Win+J",
     "FocusColumnRight": "Win+K",
@@ -74,9 +78,12 @@ Action names are those in [`Action.cs`](src/Glide.Core/Action.cs). `focusRingCol
 - Off-screen columns wait as thin slivers at the screen edges; windows of other workspaces and inactive tabs wait in the bottom-right corner.
 - Resizing a window with the mouse gives its column that width; dragging one snaps it back into place.
 - Turning tiling off (Win+Ctrl+Shift+T or the tray menu) or quitting puts every window back on screen, including those on other workspaces. The layout is saved and comes back when tiling is turned on again, until Windows restarts.
-- The focused tiled window gets a colored border (Windows 11).
+- **Monitors**: each monitor has its own strip and its own nine workspaces. Shortcuts act on the monitor of the focused window (or the pointer, when nothing tiled has focus), new windows join the monitor they open on, and nothing peeks onto a neighbouring monitor. Win+Alt+←/→ move focus between monitors and Win+Alt+Shift+←/→ send the focused column over. Unplugging a monitor moves its windows to the primary one.
+- **Drag and drop**: drop a window onto a tab bar to add it to those tabs, or onto another window to stack it into that column; drop it on another monitor to move it there. Floating windows can be dropped in too.
+- **Focus ring**: a colored ring around the focused window, for every app (Electron apps such as Discord included), with its color and thickness in Settings.
 - **Overview** (Win+Tab): every workspace in use as a row of live window previews, to scale. Arrows select, Enter or a click goes to the window (switching workspace if needed), typing filters by app name and title, Esc clears the filter and then closes.
 - **Tabs** (Win+Ctrl+W): a column's windows become tabs, with a bar above the column. Win+↑/↓ or a click on a tab switches tabs; the bar never takes focus from the app.
+- **Touchpad**: on a precision touchpad, three-finger swipes left and right glide along the strip and snap to a column when you lift. Windows uses those swipes to switch apps too, so set Windows' three-finger gestures to "Nothing" (Settings › Bluetooth & devices › Touchpad); Glide's Settings links there.
 - **Mouse**: the horizontal wheel (tilting the wheel, or a thumb wheel like the MX Master's) glides along the strip and snaps to a column when you stop; Win + the vertical wheel does the same on any mouse. Settings › General › Mouse can limit the horizontal wheel to while Win is held, or give it back to apps.
 - **If Glide crashes** or is ended from Task Manager, a small watchdog copy of Glide puts every window back on screen, and after a real crash it starts Glide again (at most once a minute), which re-tiles from the saved layout.
 - **Workspaces**: switching or sending a column to another workspace shows the workspaces in use for a moment near the bottom of the screen.

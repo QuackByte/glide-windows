@@ -45,9 +45,13 @@ public enum GlideAction
     ToggleOverview,
     ToggleFloating,
     ToggleTiling,
+    FocusMonitorLeft,
+    FocusMonitorRight,
+    MoveColumnToMonitorLeft,
+    MoveColumnToMonitorRight,
 }
 
-public enum ActionGroup { Focus, Move, Columns, Workspaces, General }
+public enum ActionGroup { Focus, Move, Columns, Workspaces, Monitors, General }
 
 /// <summary>Where a workspace action goes.</summary>
 public abstract record WorkspaceTarget
@@ -88,6 +92,10 @@ public static class GlideActions
         GlideAction.ToggleOverview => "Show or Hide Overview",
         GlideAction.ToggleFloating => "Toggle Floating",
         GlideAction.ToggleTiling => "Enable or Disable Tiling",
+        GlideAction.FocusMonitorLeft => "Focus Monitor Left",
+        GlideAction.FocusMonitorRight => "Focus Monitor Right",
+        GlideAction.MoveColumnToMonitorLeft => "Move Column to Monitor Left",
+        GlideAction.MoveColumnToMonitorRight => "Move Column to Monitor Right",
         _ when action.WorkspaceCommand() is ({ } target, var moves) && target is WorkspaceTarget.Index(var index) =>
             moves ? $"Move Column to Workspace {index + 1}" : $"Focus Workspace {index + 1}",
         _ => action.ToString(),
@@ -102,6 +110,8 @@ public static class GlideActions
         GlideAction.CycleColumnWidth or GlideAction.CycleColumnWidthBackward or GlideAction.ToggleFullWidth
             or GlideAction.ToggleTabbed or GlideAction.CenterColumn => ActionGroup.Columns,
         GlideAction.ToggleOverview or GlideAction.ToggleFloating or GlideAction.ToggleTiling => ActionGroup.General,
+        GlideAction.FocusMonitorLeft or GlideAction.FocusMonitorRight or GlideAction.MoveColumnToMonitorLeft
+            or GlideAction.MoveColumnToMonitorRight => ActionGroup.Monitors,
         _ => ActionGroup.Workspaces,
     };
 

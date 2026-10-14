@@ -24,6 +24,9 @@ public sealed class GlideHost : IDisposable
     private Settings settings;
     private readonly FileSystemWatcher? settingsWatcher;
     private readonly Process? watchdog;
+    private readonly Touchpad touchpad;
+    private SwipeTracker swipeTracker = new(fingerCount: 3);
+    private bool touchpadRegistered;
     private bool reloadPending;
     private bool disposed;
 
@@ -41,10 +44,15 @@ public sealed class GlideHost : IDisposable
         tray = new TrayIcon(window);
         keyboard = new KeyboardHook(action => this.post(() => Run(action)), notches => this.post(() => Scroll(notches)));
 
+        touchpad = new Touchpad(OnTouches);
         window.MessageReceived = (message, wParam, lParam) =>
         {
             switch (message)
             {
+                case Touchpad.WM_INPUT:
+                    touchpad.Handle(lParam.Value);
+                    // Windows frees the input in DefWindowProc.
+                    return false;
                 case MessageWindow.QuitMessage:
                     Log.Info("Asked to quit by another copy of Glide (--quit)");
                     Quit();
@@ -78,6 +86,7 @@ public sealed class GlideHost : IDisposable
         manager.Enable();
         keyboard.ScrollEnabled = manager.IsEnabled;
         settingsWatcher = WatchSettingsFile();
+        ApplyTouchpad();
         watchdog = Watchdog.Launch();
     }
 
@@ -185,6 +194,7 @@ public sealed class GlideHost : IDisposable
             Log.Error("Couldn't save settings", e);
         }
         ApplyKeymap();
+        ApplyTouchpad();
         manager.ApplySettings(settings);
     }
 
@@ -274,6 +284,28 @@ public sealed class GlideHost : IDisposable
         catch (Exception e)
         {
             Log.Error("Scrolling failed", e);
+        }
+    }
+
+    /// <summary>Listens to the touchpad only while swipes are on.</summary>
+    private void ApplyTouchpad()
+    {
+        if (settings.TrackpadSwipe == touchpadRegistered) return;
+        touchpadRegistered = Touchpad.Register(window.Pointer, settings.TrackpadSwipe) && settings.TrackpadSwipe;
+        swipeTracker = new SwipeTracker(fingerCount: 3);
+    }
+
+    private void OnTouches(IReadOnlyList<Touch> touches, double time)
+    {
+        if (disposed || OverviewOpen || !manager.IsEnabled) return;
+        foreach (var swipe in swipeTracker.Update(touches, time))
+        {
+            switch (swipe)
+            {
+                case SwipeTracker.Event.Began: manager.BeginSwipe(); break;
+                case SwipeTracker.Event.Changed(var delta): manager.Swipe(delta); break;
+                case SwipeTracker.Event.Ended(var velocity): manager.EndSwipe(velocity); break;
+            }
         }
     }
 

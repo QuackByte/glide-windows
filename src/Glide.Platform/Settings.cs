@@ -29,6 +29,8 @@ public sealed class Settings
     public bool Animate { get; set; } = true;
     /// <summary>Colors the focused tiled window's border (Windows 11).</summary>
     public bool FocusRing { get; set; } = true;
+    /// <summary>The ring's thickness around the focused window, in pixels at 100% scaling.</summary>
+    public double FocusRingWidth { get; set; } = 4;
     /// <summary>"accent" for the Windows accent color, or "#RRGGBB".</summary>
     public string FocusRingColor { get; set; } = "accent";
     /// <summary>
@@ -38,6 +40,8 @@ public sealed class Settings
     public bool OverrideWindowsShortcuts { get; set; } = true;
     /// <summary>When the horizontal wheel (tilt, or a thumb wheel) scrolls the strip. Win + the vertical wheel always does.</summary>
     public WheelMode HorizontalWheel { get; set; } = WheelMode.Always;
+    /// <summary>Horizontal three-finger swipes on a precision touchpad glide along the strip.</summary>
+    public bool TrackpadSwipe { get; set; } = true;
     /// <summary>Overrides of the default shortcuts, by action name. "none" removes one.</summary>
     public Dictionary<string, string> Shortcuts { get; set; } = [];
     public List<AppRule> Rules { get; set; } = [.. AppRule.Defaults];
@@ -50,7 +54,7 @@ public sealed class Settings
             var keymap = new Keymap();
             foreach (var (name, value) in Shortcuts)
             {
-                if (!Enum.TryParse<GlideAction>(name, ignoreCase: true, out var action) || !Enum.IsDefined(action))
+                if (int.TryParse(name, out _) || !Enum.TryParse<GlideAction>(name, ignoreCase: true, out var action) || !Enum.IsDefined(action))
                 {
                     Log.Info($"Settings: unknown action \"{name}\"");
                     continue;

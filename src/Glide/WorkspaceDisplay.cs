@@ -60,7 +60,9 @@ internal sealed class WorkspaceDisplay
         // Sized from the content's parts: the window isn't laid out yet when it's placed.
         var count = announcement.Workspaces.Count;
         var width = Math.Max(count * BadgeSize + (count - 1) * BadgeSpacing, announcement.Message.Length * 7.5) + 2 * Padding;
-        var (area, scale) = OverlayWindows.PrimaryDisplay;
+        // On the monitor whose workspaces these are.
+        var area = announcement.Screen;
+        var scale = OverlayWindows.ScaleAt(area);
         var size = new SizeInt32((int)(width * scale), (int)(Height * scale));
         window.AppWindow.MoveAndResize(new RectInt32((int)(area.MidX - size.Width / 2.0), (int)(area.MaxY - size.Height - 72 * scale), size.Width, size.Height));
         window.AppWindow.Show(activateWindow: false);
