@@ -119,6 +119,17 @@ public sealed partial class SettingsWindow : Window
                 StartupEntry.IsEnabled = on;
                 Render();
             }));
+        var forget = new Button { Content = "Forget" };
+        forget.Click += (_, _) =>
+        {
+            host.ForgetAppPlacements();
+            forget.Content = "Forgotten";
+            forget.IsEnabled = false;
+        };
+        Card("Remember where apps go",
+            "Windows open on their app's usual monitor and workspace, at the width and place on the strip you last gave them. " +
+            "After a restart, open windows are arranged the same way. App rules still come first.",
+            Row(forget, Toggle(settings.RememberApps, on => { settings.RememberApps = on; Apply(); })));
         Card("Take over Windows shortcuts",
             "Win+arrows, Win+1…9, Win+Tab and a few others go to Glide instead of Snap, the taskbar and virtual desktops. " +
             "Turn this off to give them back to Windows; you can then give Glide's actions other shortcuts.",
@@ -187,6 +198,28 @@ public sealed partial class SettingsWindow : Window
                 "Windows doesn't let Glide move their windows, and Glide's shortcuts don't work while one is focused. " +
                 "Restart Glide as administrator to manage them too.", restart);
         }
+
+        Section("Updates");
+        var status = new TextBlock { VerticalAlignment = VerticalAlignment.Center, Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"] };
+        var check = new Button { Content = host.AvailableUpdate is { } ready ? $"Install {ready}" : "Check now" };
+        check.Click += async (_, _) =>
+        {
+            check.IsEnabled = false;
+            if (host.AvailableUpdate is not null)
+            {
+                status.Text = "Downloading…";
+                status.Text = await host.InstallUpdateAsync() ? "Installing; Glide restarts in a moment." : "Couldn't install it; see the log.";
+                return;
+            }
+            status.Text = "Checking…";
+            var found = await host.CheckForUpdateAsync(evenIfOff: true);
+            status.Text = found is null ? "Glide is up to date." : $"Glide {found} is available.";
+            check.Content = found is null ? "Check now" : $"Install {found}";
+            check.IsEnabled = true;
+        };
+        Card($"Glide {GlideHost.Version.ToString(3)}",
+            "Glide looks for a newer version twice a day and offers it from the tray icon. Updates are checked against their checksums before they install.",
+            Row(status, check, Toggle(settings.CheckForUpdates, on => { settings.CheckForUpdates = on; Apply(); })));
 
         Section("Files");
         var openSettings = new Button { Content = "Open settings file" };

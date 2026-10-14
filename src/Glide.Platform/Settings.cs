@@ -42,6 +42,12 @@ public sealed class Settings
     public WheelMode HorizontalWheel { get; set; } = WheelMode.Always;
     /// <summary>Horizontal three-finger swipes on a precision touchpad glide along the strip.</summary>
     public bool TrackpadSwipe { get; set; } = true;
+    /// <summary>New windows (and, after a restart, open ones) go back to their app's usual monitor, workspace, width and place.</summary>
+    public bool RememberApps { get; set; } = true;
+    /// <summary>Look for a newer Glide twice a day and offer it from the tray.</summary>
+    public bool CheckForUpdates { get; set; } = true;
+    /// <summary>The public GitHub repository ("owner/name") whose releases carry Glide's installers.</summary>
+    public string UpdateRepository { get; set; } = "QuackByte/glide-windows-releases";
     /// <summary>Overrides of the default shortcuts, by action name. "none" removes one.</summary>
     public Dictionary<string, string> Shortcuts { get; set; } = [];
     public List<AppRule> Rules { get; set; } = [.. AppRule.Defaults];
