@@ -11,7 +11,9 @@ namespace Glide.Platform;
 /// </summary>
 internal sealed class WindowManager : IDisposable
 {
-    private const nuint AnimationTimer = 1, SettleTimer = 2;
+    private const nuint AnimationTimer = 1, SettleTimer = 2, WheelTimer = 4, SnapshotTimer = 5;
+    /// <summary>How far one wheel notch moves the strip, as a share of the screen.</summary>
+    private const double NotchFraction = 0.12;
     private static readonly string snapshotPath = Path.Combine(Settings.Directory, "layout.json");
 
     private readonly MessageWindow window;
@@ -281,6 +283,32 @@ internal sealed class WindowManager : IDisposable
     private void Announce(string message) =>
         WorkspaceAnnounced?.Invoke(new WorkspaceAnnouncement(
             [.. spaces.Occupied.Append(spaces.ActiveIndex).Distinct().Order().Select(i => (i + 1, i == spaces.ActiveIndex))], message));
+
+    // Scrolling with the mouse wheel
+
+    /// <summary>
+    /// Moves the strip with the wheel (in notches; positive goes right), rubber-banding past the
+    /// ends. Shortly after the wheel stops, it snaps to the nearest column edge and keeps focus
+    /// on a column that's fully on screen, like ending a trackpad swipe.
+    /// </summary>
+    public void ScrollStrip(double notches)
+    {
+        if (!IsEnabled || spaces.Active.Strip.IsEmpty) return;
+        FinishAnimations();
+        var workspace = spaces.Active;
+        workspace.Scroll(notches * workspace.UsableWidth * NotchFraction);
+        Layout(animate: false);
+        window.StopTimer(WheelTimer);
+        window.StartTimer(WheelTimer, 220, () =>
+        {
+            window.StopTimer(WheelTimer);
+            if (!IsEnabled) return;
+            var focusMoved = spaces.Active.SettleSwipe(spaces.Active.ScrollOffset);
+            Log.Debug($"Wheel scroll settled at {spaces.Active.ScrollOffset}; focus {spaces.Active.Strip.FocusedWindow}{(focusMoved ? " (moved)" : "")}");
+            Layout();
+            if (focusMoved) FocusActive();
+        });
+    }
 
     // Overview and tabs
 
@@ -584,6 +612,13 @@ internal sealed class WindowManager : IDisposable
             StopAnimationTimer();
             RefreshTabBars();
         }
+        // Keep the saved layout fresh, so a relaunch after a crash re-tiles in the same order.
+        window.StopTimer(SnapshotTimer);
+        window.StartTimer(SnapshotTimer, 3000, () =>
+        {
+            window.StopTimer(SnapshotTimer);
+            if (IsEnabled) SaveSnapshot();
+        });
         // Check where windows landed once they've had time to get there.
         window.StopTimer(SettleTimer);
         window.StartTimer(SettleTimer, (uint)(FrameAnimation.DefaultDuration * 1000) + 150, () =>

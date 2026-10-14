@@ -36,6 +36,8 @@ public sealed class Settings
     /// desktops…). Off gives those back to Windows, like FancyZones' "Override Windows Snap".
     /// </summary>
     public bool OverrideWindowsShortcuts { get; set; } = true;
+    /// <summary>When the horizontal wheel (tilt, or a thumb wheel) scrolls the strip. Win + the vertical wheel always does.</summary>
+    public WheelMode HorizontalWheel { get; set; } = WheelMode.Always;
     /// <summary>Overrides of the default shortcuts, by action name. "none" removes one.</summary>
     public Dictionary<string, string> Shortcuts { get; set; } = [];
     public List<AppRule> Rules { get; set; } = [.. AppRule.Defaults];

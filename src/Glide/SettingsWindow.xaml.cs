@@ -111,12 +111,29 @@ public sealed partial class SettingsWindow : Window
 
         Section("Tiling");
         var tiling = Toggle(host.TilingEnabled, on => host.TilingEnabled = on);
-        Card("Tile windows", $"Arrange windows as columns on a scrolling strip. {settings.Keymap.Combo(GlideAction.ToggleTiling)?.ToString() ?? "A shortcut"} turns it on or off from anywhere.", tiling);
-        Card("Start Glide when I sign in", null, Toggle(StartupEntry.IsEnabled, on => StartupEntry.IsEnabled = on));
+        Card("Tile windows", $"Arrange windows as columns on a scrolling strip. {(settings.Keymap.Combo(GlideAction.ToggleTiling) is { } toggle ? KeyLabels.Describe(toggle) : "A shortcut")} turns it on or off from anywhere.", tiling);
+        Card("Start Glide when I sign in",
+            StartupEntry.StartsElevated ? "Starts as administrator." : host.IsElevated ? "Starts as administrator, like now." : null,
+            Toggle(StartupEntry.IsEnabled, on =>
+            {
+                StartupEntry.IsEnabled = on;
+                Render();
+            }));
         Card("Take over Windows shortcuts",
             "Win+arrows, Win+1…9, Win+Tab and a few others go to Glide instead of Snap, the taskbar and virtual desktops. " +
             "Turn this off to give them back to Windows; you can then give Glide's actions other shortcuts.",
             Toggle(settings.OverrideWindowsShortcuts, on => { settings.OverrideWindowsShortcuts = on; Apply(); }));
+
+        Section("Mouse");
+        var wheel = Choice(["Always scrolls the strip", "Scrolls the strip while Win is held", "Scrolls the app, as usual"], (int)settings.HorizontalWheel, 280);
+        wheel.SelectionChanged += (_, _) =>
+        {
+            settings.HorizontalWheel = (WheelMode)Math.Max(wheel.SelectedIndex, 0);
+            Apply();
+        };
+        Card("Horizontal wheel",
+            "Tilting the wheel, or a thumb wheel like the MX Master's, glides along the strip; it snaps to a column when you stop. " +
+            "Win + the vertical wheel always does, for mice without one.", wheel);
 
         Section("Appearance");
         var gap = new Slider { Minimum = 0, Maximum = 48, StepFrequency = 2, Value = settings.Gap, Width = 220 };
@@ -210,7 +227,7 @@ public sealed partial class SettingsWindow : Window
         var button = new Button
         {
             MinWidth = 180,
-            Content = isRecording ? "Press keys…" : combo?.ToString() ?? "Not set",
+            Content = isRecording ? "Press keys…" : combo is { } shown ? KeyLabels.Describe(shown) : "Not set",
             Style = isRecording ? (Style)Application.Current.Resources["AccentButtonStyle"] : null,
         };
         button.Click += (_, _) =>
@@ -237,10 +254,16 @@ public sealed partial class SettingsWindow : Window
             controls.Add(undo);
         }
 
-        string? note = null;
+        string? note = action switch
+        {
+            GlideAction.ConsumeOrExpelLeft => "Stacks the window into the column on its left; a window already in a stack moves out to its own column on the left.",
+            GlideAction.ConsumeOrExpelRight => "Stacks the window into the column on its right; a window already in a stack moves out to its own column on the right.",
+            GlideAction.ToggleTabbed => "Shows a stacked column's windows as tabs, one at a time.",
+            _ => null,
+        };
         if (GlideHost.Unavailable.Contains(action))
             note = "Coming with the overview. Until then Windows keeps this shortcut.";
-        else if (combo is { } bound && ShortcutPolicy.ReplacedWindowsFeature(bound) is { } feature)
+        else if (note is null && combo is { } bound && ShortcutPolicy.ReplacedWindowsFeature(bound) is { } feature)
             note = settings.OverrideWindowsShortcuts ? $"Replaces Windows' “{feature}”." : $"Given back to Windows (“{feature}”). Choose another shortcut to use it in Glide.";
         Card(action.Title(), note, Row([.. controls]), compact: true);
     }
@@ -285,11 +308,11 @@ public sealed partial class SettingsWindow : Window
         switch (ShortcutPolicy.Evaluate(combo))
         {
             case ShortcutPolicy.Verdict.Rejected(var reason):
-                notice = (InfoBarSeverity.Error, $"{combo} can't be used. {reason}");
+                notice = (InfoBarSeverity.Error, $"{KeyLabels.Describe(combo)} can't be used. {reason}");
                 Render();
                 return;
             case ShortcutPolicy.Verdict.Warning(var warning):
-                notice = (InfoBarSeverity.Warning, $"{action.Title()} is now {combo}. {warning}");
+                notice = (InfoBarSeverity.Warning, $"{action.Title()} is now {KeyLabels.Describe(combo)}. {warning}");
                 break;
             default:
                 notice = null;
@@ -301,11 +324,11 @@ public sealed partial class SettingsWindow : Window
         if (displaced.Count > 0)
         {
             var others = string.Join(", ", displaced.Select(a => a.Title()));
-            notice = (InfoBarSeverity.Informational, $"{combo} was used by {others}, which now has no shortcut.");
+            notice = (InfoBarSeverity.Informational, $"{KeyLabels.Describe(combo)} was used by {others}, which now has no shortcut.");
         }
         else if (notice is null && !settings.OverrideWindowsShortcuts && ShortcutPolicy.ReplacedWindowsFeature(combo) is { } feature)
         {
-            notice = (InfoBarSeverity.Warning, $"{combo} stays with Windows (“{feature}”) while “Take over Windows shortcuts” is off.");
+            notice = (InfoBarSeverity.Warning, $"{KeyLabels.Describe(combo)} stays with Windows (“{feature}”) while “Take over Windows shortcuts” is off.");
         }
         Render();
     }

@@ -58,6 +58,11 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 [Run]
 Filename: "{app}\Glide.exe"; Description: "Start Glide now"; Flags: nowait postinstall skipifsilent
 
+[UninstallRun]
+; The sign-in task Glide creates when it runs as administrator. Removing it needs the same rights,
+; so this may fail quietly for a task made elevated.
+Filename: "{sys}\schtasks.exe"; Parameters: "/Delete /TN Glide /F"; Flags: runhidden; RunOnceId: "RemoveSignInTask"
+
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
 

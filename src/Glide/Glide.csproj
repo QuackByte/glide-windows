@@ -16,6 +16,8 @@
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <SelfContained>true</SelfContained>
+    <!-- Program.cs decides between watchdog mode and the app. -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <ApplicationIcon>Assets\Glide.ico</ApplicationIcon>
     <Version>0.1.0</Version>
     <Product>Glide</Product>

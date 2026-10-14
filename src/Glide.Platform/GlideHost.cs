@@ -23,6 +23,7 @@ public sealed class GlideHost : IDisposable
     private readonly WindowManager manager;
     private Settings settings;
     private readonly FileSystemWatcher? settingsWatcher;
+    private readonly Process? watchdog;
     private bool reloadPending;
     private bool disposed;
 
@@ -38,7 +39,7 @@ public sealed class GlideHost : IDisposable
         window = new MessageWindow();
         manager = new WindowManager(window, settings);
         tray = new TrayIcon(window);
-        keyboard = new KeyboardHook(action => this.post(() => Run(action)));
+        keyboard = new KeyboardHook(action => this.post(() => Run(action)), notches => this.post(() => Scroll(notches)));
 
         window.MessageReceived = (message, wParam, lParam) =>
         {
@@ -67,6 +68,7 @@ public sealed class GlideHost : IDisposable
         manager.WorkspaceAnnounced += announcement => WorkspaceAnnounced?.Invoke(announcement);
         manager.StateChanged += () =>
         {
+            keyboard.ScrollEnabled = manager.IsEnabled;
             tray.Update(manager.ActiveWorkspaceNumber, manager.IsEnabled);
             StateChanged?.Invoke();
         };
@@ -74,7 +76,9 @@ public sealed class GlideHost : IDisposable
         keyboard.Start();
         ApplyKeymap();
         manager.Enable();
+        keyboard.ScrollEnabled = manager.IsEnabled;
         settingsWatcher = WatchSettingsFile();
+        watchdog = Watchdog.Launch();
     }
 
     /// <summary>Picks up edits to settings.json made by hand, a moment after they're saved.</summary>
@@ -260,15 +264,29 @@ public sealed class GlideHost : IDisposable
         }
     }
 
+    private void Scroll(double notches)
+    {
+        if (disposed || OverviewOpen) return;
+        try
+        {
+            manager.ScrollStrip(notches);
+        }
+        catch (Exception e)
+        {
+            Log.Error("Scrolling failed", e);
+        }
+    }
+
     private void ApplyKeymap()
     {
+        keyboard.HorizontalWheel = settings.HorizontalWheel;
         var keymap = settings.Keymap;
         keyboard.SetBindings(keymap.Bindings
             .Where(b => !Unavailable.Contains(b.Action))
             // Given back to Windows: combos that replace a Windows feature stay Windows'.
             .Where(b => settings.OverrideWindowsShortcuts || ShortcutPolicy.ReplacedWindowsFeature(b.Combo) is null)
             .Select(b => (b.Combo, b.Action)));
-        tray.ToggleShortcut = keymap.Combo(GlideAction.ToggleTiling)?.ToString() ?? "";
+        tray.ToggleShortcut = keymap.Combo(GlideAction.ToggleTiling) is { } toggle ? KeyLabels.Describe(toggle) : "";
     }
 
     // Other instances
@@ -288,6 +306,19 @@ public sealed class GlideHost : IDisposable
         return PInvoke.PostMessage(other, message, default, default);
     }
 
+    /// <summary>A clean exit: the watchdog has nothing to recover.</summary>
+    private void StopWatchdog()
+    {
+        try
+        {
+            if (watchdog is { HasExited: false }) watchdog.Kill();
+        }
+        catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+        }
+        watchdog?.Dispose();
+    }
+
     public void Quit()
     {
         Dispose();
@@ -300,6 +331,7 @@ public sealed class GlideHost : IDisposable
         if (disposed) return;
         disposed = true;
         settingsWatcher?.Dispose();
+        StopWatchdog();
         try
         {
             manager.Dispose();
