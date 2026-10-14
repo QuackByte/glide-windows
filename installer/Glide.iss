@@ -38,9 +38,13 @@ UninstallDisplayIcon={app}\Glide.exe
 UninstallDisplayName=Glide
 ; Glide is asked to quit (and restore its windows) below, not closed by Restart Manager.
 CloseApplications=no
+; SignPath Foundation asks that software which contacts a server shows its privacy policy while
+; installing and offers to turn that off (the "updates" task below).
+InfoBeforeFile=Privacy.txt
 
 [Tasks]
 Name: startup; Description: "Start Glide when I sign in"; Flags: unchecked
+Name: updates; Description: "Check for updates (asks GitHub for the latest version once a day)"
 
 [InstallDelete]
 ; Files from the previous version, so an upgrade doesn't mix DLLs.
@@ -53,6 +57,10 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "*.pdb"; Flags: ignorevers
 Name: "{autoprograms}\Glide"; Filename: "{app}\Glide.exe"; Comment: "Scrolling window manager"
 
 [Registry]
+; Glide reads the updates choice on its next start and removes the value (Settings.ApplyInstallerChoices).
+; Updates keep whatever was chosen in Settings since.
+Root: HKCU; Subkey: "Software\Glide"; ValueType: dword; ValueName: "CheckForUpdates"; ValueData: 1; Flags: uninsdeletekey; Tasks: updates; Check: IsFreshInstall
+Root: HKCU; Subkey: "Software\Glide"; ValueType: dword; ValueName: "CheckForUpdates"; ValueData: 0; Flags: uninsdeletekey; Tasks: not updates; Check: IsFreshInstall
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Glide"; ValueData: """{app}\Glide.exe"""; Flags: uninsdeletevalue; Tasks: startup
 
 [Run]
@@ -95,6 +103,11 @@ end;
 function IsUpdate(): Boolean;
 begin
   Result := ExpandConstant('{param:update|0}') = '1';
+end;
+
+function IsFreshInstall(): Boolean;
+begin
+  Result := not IsUpdate();
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;

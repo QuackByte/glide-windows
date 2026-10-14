@@ -40,6 +40,7 @@ public sealed class GlideHost : IDisposable
         this.post = post;
         this.quit = quit;
         settings = Settings.Load();
+        settings.ApplyInstallerChoices();
         Log.Info($"Glide starting (pid {Environment.ProcessId}, {(IsElevated ? "elevated" : "not elevated")})");
 
         window = new MessageWindow();
