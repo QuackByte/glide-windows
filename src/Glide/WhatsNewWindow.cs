@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using Windows.Graphics;
+using static Glide.Core.Strings;
 
 namespace Glide;
 
@@ -21,7 +22,7 @@ public sealed partial class WhatsNewWindow : Window
 
     public WhatsNewWindow(IReadOnlyList<Changelog.Release> releases)
     {
-        Title = "What's new in Glide";
+        Title = T("What's new in Glide");
         SystemBackdrop = new MicaBackdrop();
         ExtendsContentIntoTitleBar = true;
         AppWindow.SetIcon("Assets/Glide.ico");
@@ -33,7 +34,7 @@ public sealed partial class WhatsNewWindow : Window
         var body = new StackPanel { Padding = new Thickness(32, 4, 32, 24) };
         foreach (var release in releases) AddRelease(body, release);
 
-        var done = new Button { Content = "Continue", Style = Resource<Style>("AccentButtonStyle"), HorizontalAlignment = HorizontalAlignment.Right, MinWidth = 120 };
+        var done = new Button { Content = T("Continue"), Style = Resource<Style>("AccentButtonStyle"), HorizontalAlignment = HorizontalAlignment.Right, MinWidth = 120 };
         done.Click += (_, _) => Close();
         var footer = new Border
         {
@@ -81,7 +82,7 @@ public sealed partial class WhatsNewWindow : Window
         {
             body.Children.Add(new TextBlock
             {
-                Text = date.ToString("d MMMM yyyy", CultureInfo.GetCultureInfo("en-GB")),
+                Text = date.ToString(T("d MMMM yyyy"), Culture),
                 Style = Resource<Style>("CaptionTextBlockStyle"),
                 Foreground = Resource<Brush>("TextFillColorSecondaryBrush"),
             });

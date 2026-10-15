@@ -164,7 +164,8 @@ internal sealed unsafe class KeyboardHook(Action<GlideAction> onAction, Action<d
         var win = IsDown(Win32.VK_LWIN) || IsDown(Win32.VK_RWIN);
         var horizontal = message == WM_MOUSEHWHEEL;
         var takes = horizontal ? HorizontalWheel == WheelMode.Always || (HorizontalWheel == WheelMode.WithWin && win) : win;
-        if (!takes) return PInvoke.CallNextHookEx(mouseHook, code, wParam, lParam);
+        // A full-screen video or game keeps its wheel; Win + the wheel is asked for, so it still goes to the strip.
+        if (!takes || (!win && Native.ForegroundIsFullscreen())) return PInvoke.CallNextHookEx(mouseHook, code, wParam, lParam);
 
         var delta = (short)(info->mouseData >> 16) / 120.0;
         // Tilting right or turning the thumb wheel forward goes right; the vertical wheel turned

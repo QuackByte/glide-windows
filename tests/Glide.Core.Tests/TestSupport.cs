@@ -1,7 +1,13 @@
+using System.Runtime.CompilerServices;
+
 namespace Glide.Core.Tests;
 
 internal static class TestSupport
 {
+    /// <summary>Tests read Glide's English, whatever language this machine is set to.</summary>
+    [ModuleInitializer]
+    internal static void InEnglish() => Strings.UseLanguage("en");
+
     /// <summary>1212 wide so preset maths gives whole numbers with a 12 px gap: (1212 - 12) × ½ - 12 = 588.</summary>
     public static readonly Rect Viewport = new(0, 40, 1212, 800);
 

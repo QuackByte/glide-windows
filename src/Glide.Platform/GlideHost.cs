@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Glide.Core;
 using Windows.Win32;
 using Windows.Win32.Foundation;
+using static Glide.Core.Strings;
 
 namespace Glide.Platform;
 
@@ -41,6 +42,7 @@ public sealed class GlideHost : IDisposable
         this.quit = quit;
         settings = Settings.Load();
         settings.ApplyInstallerChoices();
+        Strings.UseLanguage(settings.Language);
         Log.Info($"Glide starting (pid {Environment.ProcessId}, {(IsElevated ? "elevated" : "not elevated")})");
 
         window = new MessageWindow();
@@ -72,6 +74,10 @@ public sealed class GlideHost : IDisposable
         tray.ToggleRequested += manager.Toggle;
         tray.SettingsRequested += () => SettingsRequested?.Invoke();
         tray.WhatsNewRequested += () => WhatsNewRequested?.Invoke();
+        tray.ShortcutSheetRequested += () => ShortcutSheetRequested?.Invoke();
+        tray.ReportProblemRequested += ReportProblem;
+        tray.ActionRequested += Run;
+        tray.Contents = MenuContents;
         tray.UpdateRequested += () => _ = InstallUpdateAsync();
         tray.QuitRequested += () =>
         {
@@ -105,6 +111,47 @@ public sealed class GlideHost : IDisposable
     }
 
     private void UpdateTray() => tray.Update(manager.ActiveWorkspaceNumber, manager.IsEnabled, manager.WorkspacesInUse);
+
+    /// <summary>The tray menu's workspaces, every action with its shortcut, and the shortcuts left to Windows.</summary>
+    private TrayIcon.MenuContents MenuContents()
+    {
+        var keymap = settings.Keymap;
+        string? Shortcut(GlideAction action) => keymap.Combo(action) is { } combo && IsActive(combo, action) ? KeyLabels.Describe(combo) : null;
+        var (windows, columns) = manager.ActiveWorkspaceCounts;
+        var summary = T("{0} in {1}", windows == 1 ? T("1 window") : T("{0} windows", windows), columns == 1 ? T("1 column") : T("{0} columns", columns));
+        var groups = GlideActions.All
+            .GroupBy(a => a.Group())
+            .OrderBy(g => g.Key)
+            .Select(g => (g.Key.Title(), (IReadOnlyList<(GlideAction, string, string?)>)[.. g.Select(a => (a, a.Title(), Shortcut(a)))]))
+            .ToList();
+        var givenBack = keymap.Bindings
+            .Where(b => !IsActive(b.Combo, b.Action))
+            .Select(b => $"{b.Action.Title()} ({KeyLabels.Describe(b.Combo)}): {ShortcutPolicy.ReplacedWindowsFeature(b.Combo)}")
+            .ToList();
+        return new TrayIcon.MenuContents(summary, [.. manager.WorkspaceSummary.Select(w => (w.Number, w.Windows, w.IsActive, Shortcut(GlideAction.FocusWorkspace1 + w.Number - 1)))],
+                                         groups, Shortcut(GlideAction.ShowShortcuts), givenBack);
+    }
+
+    /// <summary>Every action by group, with its shortcut when Glide gets it, for the shortcut sheet.</summary>
+    public IReadOnlyList<(string Group, IReadOnlyList<(GlideAction Action, string Title, string? Shortcut)> Actions)> ShortcutList() =>
+        MenuContents().Shortcuts;
+
+    /// <summary>Gathers the log and settings into a zip and opens a GitHub issue to attach it to.</summary>
+    public void ReportProblem()
+    {
+        try
+        {
+            ProblemReport.Open("QuackByte/glide-windows");
+        }
+        catch (Exception e)
+        {
+            Log.Error("Couldn't prepare a problem report", e);
+        }
+    }
+
+    /// <summary>Whether Glide gets this shortcut: not when it's been left to Windows (Settings › General).</summary>
+    private bool IsActive(KeyCombo combo, GlideAction action) =>
+        !Unavailable.Contains(action) && (settings.OverrideWindowsShortcuts || ShortcutPolicy.ReplacedWindowsFeature(combo) is null);
 
     /// <summary>Picks up edits to settings.json made by hand, a moment after they're saved.</summary>
     private FileSystemWatcher? WatchSettingsFile()
@@ -154,6 +201,10 @@ public sealed class GlideHost : IDisposable
     /// <summary>The user asked for the settings window (tray menu, or launching Glide again).</summary>
     public event Action? SettingsRequested;
     public event Action? WhatsNewRequested;
+
+    /// <summary>The sheet listing every shortcut was asked for (its shortcut, or the tray menu).</summary>
+    public event Action? ShortcutSheetRequested;
+
 
     /// <summary>The overview shortcut was pressed: open the overview, or close it if it's open.</summary>
     public event Action? OverviewToggleRequested;
@@ -291,8 +342,12 @@ public sealed class GlideHost : IDisposable
         return true;
     }
 
-    /// <summary>Brings one of Glide's own windows to the front, past Windows' focus-stealing rules.</summary>
-    public static unsafe void BringToFront(nint hwnd) => Native.Focus(new HWND((void*)hwnd));
+    /// <summary>Focuses one of Glide's windows, or when Windows won't allow that, at least shows it above the rest.</summary>
+    public static unsafe void BringToFront(nint hwnd)
+    {
+        var window = new HWND((void*)hwnd);
+        if (!Native.Focus(window)) Native.Raise(window);
+    }
 
     public static void OpenInEditor(string path)
     {
@@ -306,6 +361,11 @@ public sealed class GlideHost : IDisposable
         if (action == GlideAction.ToggleOverview)
         {
             if (manager.IsEnabled || OverviewOpen) OverviewToggleRequested?.Invoke();
+            return;
+        }
+        if (action == GlideAction.ShowShortcuts)
+        {
+            ShortcutSheetRequested?.Invoke();
             return;
         }
         if (OverviewOpen && action != GlideAction.ToggleTiling) return;
@@ -343,6 +403,8 @@ public sealed class GlideHost : IDisposable
     private void OnTouches(IReadOnlyList<Touch> touches, double time)
     {
         if (disposed || OverviewOpen || !manager.IsEnabled) return;
+        // A full-screen app keeps its gestures; a swipe in progress is let go.
+        if (Native.ForegroundIsFullscreen()) touches = [];
         foreach (var swipe in swipeTracker.Update(touches, time))
         {
             switch (swipe)
@@ -358,11 +420,8 @@ public sealed class GlideHost : IDisposable
     {
         keyboard.HorizontalWheel = settings.HorizontalWheel;
         var keymap = settings.Keymap;
-        keyboard.SetBindings(keymap.Bindings
-            .Where(b => !Unavailable.Contains(b.Action))
-            // Given back to Windows: combos that replace a Windows feature stay Windows'.
-            .Where(b => settings.OverrideWindowsShortcuts || ShortcutPolicy.ReplacedWindowsFeature(b.Combo) is null)
-            .Select(b => (b.Combo, b.Action)));
+        // Given back to Windows: combos that replace a Windows feature stay Windows'.
+        keyboard.SetBindings(keymap.Bindings.Where(b => IsActive(b.Combo, b.Action)).Select(b => (b.Combo, b.Action)));
         tray.ToggleShortcut = keymap.Combo(GlideAction.ToggleTiling) is { } toggle ? KeyLabels.Describe(toggle) : "";
     }
 

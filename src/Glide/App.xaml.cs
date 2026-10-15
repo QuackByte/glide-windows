@@ -15,6 +15,7 @@ public partial class App : Application
     private Mutex? instance;
     private SettingsWindow? settingsWindow;
     private WhatsNewWindow? whatsNewWindow;
+    private ShortcutSheetWindow? shortcutSheet;
     private OverviewWindow? overview;
     private TabBars? tabBars;
     private readonly WorkspaceDisplay workspaceDisplay = new();
@@ -75,6 +76,7 @@ public partial class App : Application
         host.SettingsRequested += ShowSettings;
         host.WhatsNewRequested += () => ShowWhatsNew(WhatsNewWindow.History.Releases);
         host.OverviewToggleRequested += ToggleOverview;
+        host.ShortcutSheetRequested += ToggleShortcutSheet;
         tabBars = new TabBars(host);
         host.TabBarsChanged += tabBars.Show;
         host.WorkspaceAnnounced += announcement =>
@@ -162,6 +164,7 @@ public partial class App : Application
             workspaceDisplay.Close();
             settingsWindow?.Close();
             whatsNewWindow?.Close();
+            shortcutSheet?.Close();
             anchor?.Close();
         }
         catch (Exception e)
@@ -187,6 +190,29 @@ public partial class App : Application
         {
             Log.Error("Overview failed", e);
             host.OverviewOpen = false;
+        }
+    }
+
+    /// <summary>Shows every shortcut; its shortcut again closes it.</summary>
+    private void ToggleShortcutSheet()
+    {
+        if (host is null) return;
+        if (shortcutSheet is not null)
+        {
+            shortcutSheet.Close();
+            return;
+        }
+        try
+        {
+            shortcutSheet = new ShortcutSheetWindow(host);
+            shortcutSheet.Closed += (_, _) => shortcutSheet = null;
+            shortcutSheet.Activate();
+            GlideHost.BringToFront(WinRT.Interop.WindowNative.GetWindowHandle(shortcutSheet));
+        }
+        catch (Exception e)
+        {
+            Log.Error("Couldn't show the shortcuts", e);
+            shortcutSheet = null;
         }
     }
 

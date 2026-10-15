@@ -10,6 +10,7 @@ using Microsoft.UI.Xaml.Shapes;
 using Windows.System;
 using Rect = Glide.Core.Rect;
 using WindowId = Glide.Core.WindowId;
+using static Glide.Core.Strings;
 
 namespace Glide;
 
@@ -57,7 +58,7 @@ internal sealed class OverviewWindow : Window
         canvas = new Canvas();
         search = new TextBox
         {
-            PlaceholderText = "Type to filter windows",
+            PlaceholderText = T("Type to filter windows"),
             Width = 420,
             Height = SearchHeight,
             FontSize = 18,
@@ -77,7 +78,7 @@ internal sealed class OverviewWindow : Window
         };
         var footer = new TextBlock
         {
-            Text = "Type to filter    ← → ↑ ↓ select    Enter go    Esc close",
+            Text = T("Type to filter    ← → ↑ ↓ select    Enter go    Esc close"),
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Bottom,
             Margin = new Thickness(0, 0, 0, Margin - 24),
@@ -338,7 +339,7 @@ internal sealed class OverviewWindow : Window
             StrokeDashArray = [6, 5],
         };
         Place(outline, x, y);
-        var label = new TextBlock { Text = "Empty", Foreground = new SolidColorBrush(Colors.White) { Opacity = 0.6 } };
+        var label = new TextBlock { Text = T("Empty"), Foreground = new SolidColorBrush(Colors.White) { Opacity = 0.6 } };
         Place(label, x + width / 2 - 20, y + height / 2 - 10);
     }
 
@@ -437,9 +438,9 @@ internal sealed class OverviewWindow : Window
         matchCount.Text = overview.Matches switch
         {
             null => "",
-            { Count: 0 } => "No match",
-            { Count: 1 } => "1 match",
-            var matches => $"{matches.Count} matches",
+            { Count: 0 } => T("No match"),
+            { Count: 1 } => T("1 match"),
+            var matches => T("{0} matches", matches.Count),
         };
     }
 }

@@ -83,6 +83,7 @@ public static class KeyCode
     /// <summary>VK_OEM_4 and VK_OEM_6: the [ and ] keys on a US layout.</summary>
     public const uint LeftBracket = 0xDB;
     public const uint RightBracket = 0xDD;
+    public const uint Slash = 0xBF;
 
     public static uint Letter(char letter) => char.ToUpperInvariant(letter);
 

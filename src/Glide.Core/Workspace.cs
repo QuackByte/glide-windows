@@ -328,6 +328,37 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
         return result;
     }
 
+    /// <summary>
+    /// Where a window dropped on <paramref name="window"/> would go, to highlight while dragging: the
+    /// part of its column on screen, tab bar included. Null when the column isn't on screen.
+    /// </summary>
+    public Rect? ColumnFrame(WindowId window)
+    {
+        if (Strip.Location(window) is not (int column, _)) return null;
+        var windows = Strip.Columns[column].Windows;
+        Rect? frame = null;
+        foreach (var placement in Placements())
+        {
+            if (!windows.Contains(placement.Window) || placement.Visibility is not (Visibility.Visible or Visibility.Partial)) continue;
+            frame = frame?.Union(placement.Frame) ?? placement.Frame;
+        }
+        if (TabBars().FirstOrDefault(b => b.Column == column) is { } bar) frame = frame?.Union(bar.Frame) ?? bar.Frame;
+        return frame is { } shown ? shown.Intersection(Viewport) : null;
+    }
+
+    /// <summary>
+    /// A slim bar, <paramref name="thickness"/> wide, in the gap where a column inserted at
+    /// <paramref name="index"/> would go: for a window dropped onto this strip from another monitor.
+    /// </summary>
+    public Rect InsertionFrame(int index, double thickness)
+    {
+        var offsets = ColumnOffsets();
+        var edge = index < offsets.Count ? offsets[index] : Strip.IsEmpty ? 0 : ContentWidth + Settings.Gap;
+        var x = Viewport.MinX + Settings.Gap + edge - ScrollOffset - Settings.Gap / 2;
+        var middle = Math.Clamp(x, Viewport.MinX + thickness / 2, Viewport.MaxX - thickness / 2);
+        return new Rect(Rounding.Round(middle - thickness / 2), Viewport.MinY + Settings.Gap, thickness, Math.Max(Viewport.Height - 2 * Settings.Gap, 0));
+    }
+
     /// <summary>A column's left edge on screen, and whether it is visible or parked at an edge.</summary>
     private (double X, Visibility Visibility) Position(int index)
     {

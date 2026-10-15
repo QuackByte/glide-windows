@@ -1,3 +1,5 @@
+using static Glide.Core.Strings;
+
 namespace Glide.Core;
 
 /// <summary>Everything a shortcut can trigger. Names are persisted; do not rename them.</summary>
@@ -49,6 +51,7 @@ public enum GlideAction
     FocusMonitorRight,
     MoveColumnToMonitorLeft,
     MoveColumnToMonitorRight,
+    ShowShortcuts,
 }
 
 public enum ActionGroup { Focus, Move, Columns, Workspaces, Monitors, General }
@@ -68,37 +71,48 @@ public static class GlideActions
 
     public static string Title(this GlideAction action) => action switch
     {
-        GlideAction.FocusColumnLeft => "Focus Column Left",
-        GlideAction.FocusColumnRight => "Focus Column Right",
-        GlideAction.FocusWindowUp => "Focus Window Up",
-        GlideAction.FocusWindowDown => "Focus Window Down",
-        GlideAction.FocusFirstColumn => "Focus First Column",
-        GlideAction.FocusLastColumn => "Focus Last Column",
-        GlideAction.MoveColumnLeft => "Move Column Left",
-        GlideAction.MoveColumnRight => "Move Column Right",
-        GlideAction.MoveWindowUp => "Move Window Up",
-        GlideAction.MoveWindowDown => "Move Window Down",
-        GlideAction.ConsumeOrExpelLeft => "Stack or Unstack Window Left",
-        GlideAction.ConsumeOrExpelRight => "Stack or Unstack Window Right",
-        GlideAction.CycleColumnWidth => "Cycle Column Width",
-        GlideAction.CycleColumnWidthBackward => "Cycle Column Width Backward",
-        GlideAction.ToggleFullWidth => "Toggle Full Width",
-        GlideAction.ToggleTabbed => "Toggle Tabbed Column",
-        GlideAction.CenterColumn => "Center Column",
-        GlideAction.FocusPreviousWorkspace => "Focus Previous Workspace",
-        GlideAction.FocusNextWorkspace => "Focus Next Workspace",
-        GlideAction.MoveColumnToPreviousWorkspace => "Move Column to Previous Workspace",
-        GlideAction.MoveColumnToNextWorkspace => "Move Column to Next Workspace",
-        GlideAction.ToggleOverview => "Show or Hide Overview",
-        GlideAction.ToggleFloating => "Toggle Floating",
-        GlideAction.ToggleTiling => "Enable or Disable Tiling",
-        GlideAction.FocusMonitorLeft => "Focus Monitor Left",
-        GlideAction.FocusMonitorRight => "Focus Monitor Right",
-        GlideAction.MoveColumnToMonitorLeft => "Move Column to Monitor Left",
-        GlideAction.MoveColumnToMonitorRight => "Move Column to Monitor Right",
+        GlideAction.FocusColumnLeft => T("Focus Column Left"),
+        GlideAction.FocusColumnRight => T("Focus Column Right"),
+        GlideAction.FocusWindowUp => T("Focus Window Up"),
+        GlideAction.FocusWindowDown => T("Focus Window Down"),
+        GlideAction.FocusFirstColumn => T("Focus First Column"),
+        GlideAction.FocusLastColumn => T("Focus Last Column"),
+        GlideAction.MoveColumnLeft => T("Move Column Left"),
+        GlideAction.MoveColumnRight => T("Move Column Right"),
+        GlideAction.MoveWindowUp => T("Move Window Up"),
+        GlideAction.MoveWindowDown => T("Move Window Down"),
+        GlideAction.ConsumeOrExpelLeft => T("Stack or Unstack Window Left"),
+        GlideAction.ConsumeOrExpelRight => T("Stack or Unstack Window Right"),
+        GlideAction.CycleColumnWidth => T("Cycle Column Width"),
+        GlideAction.CycleColumnWidthBackward => T("Cycle Column Width Backward"),
+        GlideAction.ToggleFullWidth => T("Toggle Full Width"),
+        GlideAction.ToggleTabbed => T("Toggle Tabbed Column"),
+        GlideAction.CenterColumn => T("Center Column"),
+        GlideAction.FocusPreviousWorkspace => T("Focus Previous Workspace"),
+        GlideAction.FocusNextWorkspace => T("Focus Next Workspace"),
+        GlideAction.MoveColumnToPreviousWorkspace => T("Move Column to Previous Workspace"),
+        GlideAction.MoveColumnToNextWorkspace => T("Move Column to Next Workspace"),
+        GlideAction.ToggleOverview => T("Show or Hide Overview"),
+        GlideAction.ToggleFloating => T("Toggle Floating"),
+        GlideAction.ToggleTiling => T("Enable or Disable Tiling"),
+        GlideAction.FocusMonitorLeft => T("Focus Monitor Left"),
+        GlideAction.FocusMonitorRight => T("Focus Monitor Right"),
+        GlideAction.MoveColumnToMonitorLeft => T("Move Column to Monitor Left"),
+        GlideAction.MoveColumnToMonitorRight => T("Move Column to Monitor Right"),
+        GlideAction.ShowShortcuts => T("Show All Shortcuts"),
         _ when action.WorkspaceCommand() is ({ } target, var moves) && target is WorkspaceTarget.Index(var index) =>
-            moves ? $"Move Column to Workspace {index + 1}" : $"Focus Workspace {index + 1}",
+            moves ? T("Move Column to Workspace {0}", index + 1) : T("Focus Workspace {0}", index + 1),
         _ => action.ToString(),
+    };
+
+    public static string Title(this ActionGroup group) => group switch
+    {
+        ActionGroup.Focus => T("Focus"),
+        ActionGroup.Move => T("Move"),
+        ActionGroup.Columns => T("Columns"),
+        ActionGroup.Workspaces => T("Workspaces"),
+        ActionGroup.Monitors => T("Monitors"),
+        _ => T("General"),
     };
 
     public static ActionGroup Group(this GlideAction action) => action switch
@@ -109,7 +123,7 @@ public static class GlideActions
             or GlideAction.ConsumeOrExpelLeft or GlideAction.ConsumeOrExpelRight => ActionGroup.Move,
         GlideAction.CycleColumnWidth or GlideAction.CycleColumnWidthBackward or GlideAction.ToggleFullWidth
             or GlideAction.ToggleTabbed or GlideAction.CenterColumn => ActionGroup.Columns,
-        GlideAction.ToggleOverview or GlideAction.ToggleFloating or GlideAction.ToggleTiling => ActionGroup.General,
+        GlideAction.ToggleOverview or GlideAction.ToggleFloating or GlideAction.ToggleTiling or GlideAction.ShowShortcuts => ActionGroup.General,
         GlideAction.FocusMonitorLeft or GlideAction.FocusMonitorRight or GlideAction.MoveColumnToMonitorLeft
             or GlideAction.MoveColumnToMonitorRight => ActionGroup.Monitors,
         _ => ActionGroup.Workspaces,

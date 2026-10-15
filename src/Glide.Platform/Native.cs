@@ -40,6 +40,7 @@ internal static class Win32
     public const uint EVENT_OBJECT_DESTROY = 0x8001;
     public const uint EVENT_OBJECT_SHOW = 0x8002;
     public const uint EVENT_OBJECT_HIDE = 0x8003;
+    public const uint EVENT_OBJECT_LOCATIONCHANGE = 0x800B;
     public const uint EVENT_OBJECT_CLOAKED = 0x8017;
     public const uint EVENT_OBJECT_UNCLOAKED = 0x8018;
     public const uint WINEVENT_OUTOFCONTEXT = 0x0000;
@@ -81,6 +82,9 @@ internal static unsafe class Native
     public static HWND Hwnd(WindowId id) => new((void*)(nint)id.Value);
 
     public static bool IsSelfElevated => selfElevated.Value;
+
+    /// <summary>One of Glide's own windows: settings, What's New, the shortcut sheet.</summary>
+    public static bool IsOwn(HWND hwnd) => hwnd != HWND.Null && ProcessId(hwnd) == ownProcessId;
 
     // Inspection
 
@@ -297,6 +301,31 @@ internal static unsafe class Native
         if (PInvoke.IsZoomed(hwnd) || IsSnapped(hwnd)) PInvoke.ShowWindow(hwnd, SHOW_WINDOW_CMD.SW_SHOWNOACTIVATE);
     }
 
+    /// <summary>
+    /// Covers its whole monitor, taskbar included, without being maximized: F11 in a browser, a
+    /// video played full screen, a borderless game. The desktop itself doesn't count.
+    /// </summary>
+    public static bool IsFullscreen(HWND hwnd)
+    {
+        if (hwnd == HWND.Null || PInvoke.IsZoomed(hwnd) || PInvoke.IsIconic(hwnd) || hwnd == PInvoke.GetShellWindow()
+            || ClassName(hwnd) is "Progman" or "WorkerW" || VisibleFrame(hwnd) is not { } frame
+            || Describe(PInvoke.MonitorFromWindow(hwnd, MONITOR_FROM_FLAGS.MONITOR_DEFAULTTONEAREST)) is not { } monitor)
+            return false;
+        var screen = monitor.Bounds;
+        return frame.MinX <= screen.MinX + 1 && frame.MinY <= screen.MinY + 1 && frame.MaxX >= screen.MaxX - 1 && frame.MaxY >= screen.MaxY - 1;
+    }
+
+    /// <summary>Whether the app in front is full screen, or a game or presentation has the screen to itself.</summary>
+    public static bool ForegroundIsFullscreen()
+    {
+        // QUNS_RUNNING_D3D_FULL_SCREEN = 3, QUNS_PRESENTATION_MODE = 4.
+        if (SHQueryUserNotificationState(out var state) == 0 && state is 3 or 4) return true;
+        return IsFullscreen(PInvoke.GetForegroundWindow());
+    }
+
+    [DllImport("shell32.dll")]
+    private static extern int SHQueryUserNotificationState(out int state);
+
     /// <summary>Snapped by Windows (Snap layouts, Win+arrows, or dragging to a screen edge).</summary>
     public static bool IsSnapped(HWND hwnd)
     {
@@ -390,6 +419,17 @@ internal static unsafe class Native
         if (PInvoke.SetForegroundWindow(hwnd)) return true;
         PInvoke.BringWindowToTop(hwnd);
         return PInvoke.SetForegroundWindow(hwnd);
+    }
+
+    /// <summary>
+    /// Puts a window above every other window without activating it, for when Windows won't let it
+    /// take focus: a brief stint as topmost lifts it to the top of the normal windows.
+    /// </summary>
+    public static void Raise(HWND hwnd)
+    {
+        const SET_WINDOW_POS_FLAGS flags = SET_WINDOW_POS_FLAGS.SWP_NOMOVE | SET_WINDOW_POS_FLAGS.SWP_NOSIZE | SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE;
+        PInvoke.SetWindowPos(hwnd, new HWND((void*)-1) /* HWND_TOPMOST */, 0, 0, 0, 0, flags);
+        PInvoke.SetWindowPos(hwnd, new HWND((void*)-2) /* HWND_NOTOPMOST */, 0, 0, 0, 0, flags);
     }
 
     /// <summary>Gives focus to the desktop, e.g. after switching to an empty workspace.</summary>

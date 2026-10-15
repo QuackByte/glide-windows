@@ -128,7 +128,7 @@ internal sealed unsafe class FocusRingWindow : IDisposable
     }
 
     /// <summary>How much of the pixel at (x, y) lies inside a rounded rectangle, 0…1.</summary>
-    private static double Coverage(double x, double y, double left, double top, double right, double bottom, double radius)
+    internal static double Coverage(double x, double y, double left, double top, double right, double bottom, double radius)
     {
         // Signed distance to a rounded rectangle, negative inside.
         var halfWidth = (right - left) / 2;
