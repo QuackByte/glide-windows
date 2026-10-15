@@ -35,6 +35,7 @@ Glide takes over the Windows key the way FancyZones' "Override Windows Snap" doe
 | Send column to monitor left / right | Win+Alt+Shift+← / → | |
 | Enable or disable tiling | Win+Ctrl+Shift+T | |
 | Overview | Win+Tab | Task View |
+| Show every shortcut | Win+Ctrl+/ (the key with ? on a US keyboard) | |
 
 Shortcuts follow key positions, like on macOS: Win+[ is the key right of P on any keyboard layout (the accent key on a Spanish keyboard), and Settings shows each shortcut with your keyboard's own labels.
 
@@ -65,6 +66,7 @@ Everything is stored in `%APPDATA%\Glide\settings.json` and applies as you chang
   "trackpadSwipe": true,
   "rememberApps": true,
   "checkForUpdates": true,
+  "language": "auto",
   "shortcuts": {
     "FocusColumnLeft": "Win+J",
     "FocusColumnRight": "Win+K",
@@ -87,7 +89,7 @@ Action names are those in [`Action.cs`](src/Glide.Core/Action.cs). `focusRingCol
 - Resizing a window with the mouse gives its column that width; dragging one snaps it back into place.
 - Turning tiling off (Win+Ctrl+Shift+T or the tray menu) or quitting puts every window back on screen, including those on other workspaces. The layout is saved and comes back when tiling is turned on again, until Windows restarts.
 - **Monitors**: each monitor has its own strip and its own nine workspaces. Shortcuts act on the monitor of the focused window (or the pointer, when nothing tiled has focus), new windows join the monitor they open on, and nothing peeks onto a neighbouring monitor. Win+Alt+←/→ move focus between monitors and Win+Alt+Shift+←/→ send the focused column over. Unplugging a monitor moves its windows to the primary one.
-- **Drag and drop**: drop a window onto a tab bar to add it to those tabs, or onto another window to stack it into that column; drop it on another monitor to move it there. Floating windows can be dropped in too.
+- **Drag and drop**: drop a window onto a tab bar to add it to those tabs, or onto another window to stack it into that column; drop it on another monitor to move it there. Floating windows can be dropped in too. While you drag, an outline in the focus ring color shows the column it would join, or a bar where it would go on the other monitor; no highlight means it will snap back.
 - **Focus ring**: a colored ring around the focused window, for every app (Electron apps such as Discord included), with its color and thickness in Settings.
 - **Overview** (Win+Tab): every workspace in use as a row of live window previews, to scale, with app icons; rows too long for the screen scroll (the wheel scrolls the row under the pointer). Arrows select, Enter or a click goes to the window (switching workspace if needed), typing filters by app name and title, Esc clears the filter and then closes.
 - **Tabs** (Win+Ctrl+W): a column's windows become tabs, with a bar above the column. Win+↑/↓ or a click on a tab switches tabs; the bar never takes focus from the app.
@@ -97,7 +99,11 @@ Action names are those in [`Action.cs`](src/Glide.Core/Action.cs). `focusRingCol
 - **Updates**: Glide looks for a newer version on this repository's [releases](https://github.com/QuackByte/glide-windows/releases) twice a day and offers it from the tray icon. The installer is checked against the release's checksums, then Glide puts your windows back, updates and starts again. Turn it off while installing, or later under Settings › Updates (`checkForUpdates`); the check sends GitHub nothing but a request for the latest release, with Glide's version in the user agent.
 - **If Glide crashes** or is ended from Task Manager, a small watchdog copy of Glide puts every window back on screen, and after a real crash it starts Glide again (at most once a minute), which re-tiles from the saved layout.
 - **Workspaces**: switching or sending a column to another workspace shows the workspaces in use for a moment near the bottom of the screen.
-- The tray icon shows the active workspace; click it for the menu. `Glide.exe --quit` quits a running Glide.
+- **Tray menu**: the tray icon shows the active workspace; click it for the menu. It lists the workspaces in use with how many windows each holds (pick one to go there), and under Shortcuts every action with its shortcut, to run it from there or to see them all on one page. When "Take over Windows shortcuts" is off, it says which shortcuts Windows keeps. `Glide.exe --quit` quits a running Glide.
+- **Full screen**: a window that goes full screen (F11 in a browser, a video, a game) is left alone until it comes back, without the ring, dimming or tab bar over it, and the horizontal wheel and touchpad swipes go to it instead of the strip. Win + the wheel still glides the strip.
+- **Windows' virtual desktops**: Glide tiles the desktop you're on. Windows on other desktops leave the strip while you're away and come back in the same order. Win+Ctrl+←/→ are Glide's by default; switch desktops from Task View, or turn off "Take over Windows shortcuts" to get them back.
+- **Report a problem** (tray menu, or Settings › General): Glide puts its log and settings in a zip, with window titles taken out, shows it in Explorer and opens a new GitHub issue to describe the problem and attach the zip. Nothing is sent by itself.
+- **Language**: Glide, its installer included, is in English or, when Windows is in Spanish, Spanish. `language` in settings.json chooses (`auto`, `en` or `es`) the next time Glide starts. What's New stays in English.
 
 ## Build and run
 
@@ -122,6 +128,16 @@ installer\build.ps1 -Platform ARM64   # or x64; writes artifacts\Glide-0.1.0-arm
 The installer is per-user (no administrator rights) and installs to `%LOCALAPPDATA%\Programs\Glide`. It adds a Start menu entry and, optionally, starts Glide at sign-in. Upgrading or uninstalling first asks a running Glide to put its windows back and quit. Silent install: `Setup.exe /VERYSILENT /TASKS=startup`.
 
 Logs go to `%LOCALAPPDATA%\Glide\glide.log`; set `GLIDE_VERBOSE=1` for every action and window event.
+
+### Smoke test
+
+`tests\smoke\Smoke.ps1` drives a real Glide with its shortcuts and checks where windows land: tiling, column widths, stacking, workspaces, floating, and every window back on screen after quitting. Run it on a Windows PC or VM you're signed in to, and leave the keyboard alone for the minute it takes:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tests\smoke\Smoke.ps1 -Glide src\Glide\bin\ARM64\Debug\net9.0-windows10.0.19041.0\win-arm64\Glide.exe
+```
+
+It quits a running Glide, sets your Glide settings aside and puts them back afterwards, opens and closes three Notepad windows of its own, and starts your Glide again at the end.
 
 The engine and its tests are plain .NET and build anywhere, macOS included:
 

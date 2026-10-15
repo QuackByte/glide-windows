@@ -59,6 +59,14 @@ public readonly record struct Rect(double X, double Y, double Width, double Heig
         return new Rect(left, top, right - left, bottom - top);
     }
 
+    /// <summary>The smallest rectangle holding both.</summary>
+    public Rect Union(Rect other)
+    {
+        var left = Math.Min(MinX, other.MinX);
+        var top = Math.Min(MinY, other.MinY);
+        return new Rect(left, top, Math.Max(MaxX, other.MaxX) - left, Math.Max(MaxY, other.MaxY) - top);
+    }
+
     public Rect Inset(double dx, double dy) => new(X + dx, Y + dy, Width - 2 * dx, Height - 2 * dy);
 
     public Rect Offset(double dx, double dy) => this with { X = X + dx, Y = Y + dy };

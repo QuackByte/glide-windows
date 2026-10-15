@@ -1,10 +1,12 @@
 using System.Runtime.InteropServices;
+using Glide.Core;
 using Microsoft.Win32;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Gdi;
 using Windows.Win32.UI.Shell;
 using Windows.Win32.UI.WindowsAndMessaging;
+using static Glide.Core.Strings;
 
 namespace Glide.Platform;
 
@@ -13,7 +15,10 @@ internal sealed unsafe class TrayIcon : IDisposable
 {
     private const uint CallbackMessage = Win32.WM_APP + 1;
     private const uint IconId = 1;
-    private const nuint ToggleCommand = 1, SettingsCommand = 2, StartAtSignInCommand = 3, QuitCommand = 4, UpdateCommand = 5, WhatsNewCommand = 6;
+    private const nuint ToggleCommand = 1, SettingsCommand = 2, StartAtSignInCommand = 3, QuitCommand = 4, UpdateCommand = 5, WhatsNewCommand = 6,
+        ShortcutSheetCommand = 7, ReportProblemCommand = 8;
+    /// <summary>Menu items that run an action have this plus the action's number as their command.</summary>
+    private const nuint ActionCommandBase = 0x100;
     private const uint NIN_BALLOONUSERCLICK = 0x0405;
     private string? update;
 
@@ -35,6 +40,20 @@ internal sealed unsafe class TrayIcon : IDisposable
     public event Action? SettingsRequested;
     public event Action? UpdateRequested;
     public event Action? WhatsNewRequested;
+    public event Action? ShortcutSheetRequested;
+    public event Action? ReportProblemRequested;
+    /// <summary>An action picked from the menu: a workspace, or one from Shortcuts.</summary>
+    public event Action<GlideAction>? ActionRequested;
+
+    /// <summary>What the menu shows besides its fixed items: asked for each time it opens.</summary>
+    public sealed record MenuContents(
+        string? Summary,
+        IReadOnlyList<(int Number, int Windows, bool IsActive, string? Shortcut)> Workspaces,
+        IReadOnlyList<(string Group, IReadOnlyList<(GlideAction Action, string Title, string? Shortcut)> Actions)> Shortcuts,
+        string? ShortcutSheetShortcut,
+        IReadOnlyList<string> GivenBack);
+
+    public Func<MenuContents>? Contents { get; set; }
 
     /// <summary>Offers a newer version in the menu, and says so once in a notification.</summary>
     public void OfferUpdate(string version)
@@ -43,8 +62,8 @@ internal sealed unsafe class TrayIcon : IDisposable
         update = version;
         var data = Data();
         data.uFlags |= NOTIFY_ICON_DATA_FLAGS.NIF_INFO;
-        data.szInfoTitle = $"Glide {version} is available";
-        data.szInfo = "Click to install it. Glide puts your windows back, updates, and starts again.";
+        data.szInfoTitle = T("Glide {0} is available", version);
+        data.szInfo = T("Click to install it. Glide puts your windows back, updates, and starts again.");
         data.dwInfoFlags = NOTIFY_ICON_INFOTIP_FLAGS.NIIF_INFO;
         PInvoke.Shell_NotifyIcon(NOTIFY_ICON_MESSAGE.NIM_MODIFY, data);
     }
@@ -89,12 +108,18 @@ internal sealed unsafe class TrayIcon : IDisposable
                 case UpdateCommand: UpdateRequested?.Invoke(); break;
                 case WhatsNewCommand: WhatsNewRequested?.Invoke(); break;
                 case QuitCommand: QuitRequested?.Invoke(); break;
+                case ShortcutSheetCommand: ShortcutSheetRequested?.Invoke(); break;
+                case ReportProblemCommand: ReportProblemRequested?.Invoke(); break;
+                case var command when command >= ActionCommandBase && Enum.IsDefined((GlideAction)(int)(command - ActionCommandBase)):
+                    ActionRequested?.Invoke((GlideAction)(int)(command - ActionCommandBase));
+                    break;
                 default: return false;
             }
             return true;
         }
         if (message != CallbackMessage) return false;
         var notification = (uint)(lParam.Value & 0xFFFF);
+        Log.Debug($"Tray icon notification 0x{notification:X}");
         if (notification == NIN_BALLOONUSERCLICK && update is not null)
         {
             UpdateRequested?.Invoke();
@@ -110,17 +135,52 @@ internal sealed unsafe class TrayIcon : IDisposable
         var menu = PInvoke.CreatePopupMenu();
         try
         {
-            var shortcut = ToggleShortcut.Length > 0 ? $"\t{ToggleShortcut}" : "";
-            Append(menu, MENU_ITEM_FLAGS.MF_STRING | MENU_ITEM_FLAGS.MF_GRAYED, 0, $"Glide · Workspace {workspace}");
-            if (inUse.Count > 1) Append(menu, MENU_ITEM_FLAGS.MF_STRING | MENU_ITEM_FLAGS.MF_GRAYED, 0, $"In use: {string.Join(", ", inUse)}");
+            const MENU_ITEM_FLAGS text = MENU_ITEM_FLAGS.MF_STRING, label = MENU_ITEM_FLAGS.MF_STRING | MENU_ITEM_FLAGS.MF_GRAYED;
+            static string Keys(string? shortcut) => string.IsNullOrEmpty(shortcut) ? "" : $"\t{shortcut}";
+            MenuContents? contents = null;
+            try
+            {
+                contents = Contents?.Invoke();
+            }
+            catch (Exception e)
+            {
+                // The fixed items still work.
+                Log.Error("Couldn't list the tray menu's workspaces and shortcuts", e);
+            }
+
+            Append(menu, label, 0, T("Glide · Workspace {0}", workspace));
+            if (enabled && contents?.Summary is { } summary) Append(menu, label, 0, summary);
+            if (enabled && contents is { Workspaces.Count: > 1 })
+            {
+                Append(menu, MENU_ITEM_FLAGS.MF_SEPARATOR, 0, null);
+                foreach (var (number, windows, isActive, shortcut) in contents.Workspaces)
+                {
+                    var count = windows == 1 ? T("1 window") : T("{0} windows", windows);
+                    Append(menu, text | (isActive ? MENU_ITEM_FLAGS.MF_CHECKED : 0), ActionCommand(GlideAction.FocusWorkspace1 + number - 1),
+                           T("Workspace {0} — {1}", number, count) + Keys(shortcut));
+                }
+            }
             Append(menu, MENU_ITEM_FLAGS.MF_SEPARATOR, 0, null);
-            Append(menu, MENU_ITEM_FLAGS.MF_STRING | (enabled ? MENU_ITEM_FLAGS.MF_CHECKED : 0), ToggleCommand, $"Tiling{shortcut}");
-            Append(menu, MENU_ITEM_FLAGS.MF_STRING | (StartupEntry.IsEnabled ? MENU_ITEM_FLAGS.MF_CHECKED : 0), StartAtSignInCommand, "Start Glide When I Sign In");
-            Append(menu, MENU_ITEM_FLAGS.MF_STRING, SettingsCommand, "Settings…");
-            if (update is not null) Append(menu, MENU_ITEM_FLAGS.MF_STRING, UpdateCommand, $"Install Glide {update}");
-            Append(menu, MENU_ITEM_FLAGS.MF_STRING, WhatsNewCommand, "What's New");
+            Append(menu, text | (enabled ? MENU_ITEM_FLAGS.MF_CHECKED : 0), ToggleCommand, T("Tiling") + Keys(ToggleShortcut));
+            Append(menu, text | (StartupEntry.IsEnabled ? MENU_ITEM_FLAGS.MF_CHECKED : 0), StartAtSignInCommand, T("Start Glide When I Sign In"));
+            if (contents is not null) AppendShortcuts(menu, contents, Keys);
+            Append(menu, text, SettingsCommand, T("Settings…"));
+            if (contents is { GivenBack.Count: > 0 } given)
+            {
+                // Like a clash on the Mac: these keys do Windows' thing, not Glide's. Settings can take them back.
+                var count = given.GivenBack.Count;
+                var warning = PInvoke.CreatePopupMenu();
+                Append(warning, text, SettingsCommand, T("Open Settings to Take Them Back…"));
+                Append(warning, MENU_ITEM_FLAGS.MF_SEPARATOR, 0, null);
+                foreach (var line in given.GivenBack) Append(warning, label, 0, line);
+                Append(menu, text | MENU_ITEM_FLAGS.MF_POPUP, (nuint)(nint)warning.Value,
+                       count == 1 ? T("⚠ 1 Shortcut Left to Windows") : T("⚠ {0} Shortcuts Left to Windows", count));
+            }
+            if (update is not null) Append(menu, text, UpdateCommand, T("Install Glide {0}", update));
+            Append(menu, text, WhatsNewCommand, T("What's New"));
+            Append(menu, text, ReportProblemCommand, T("Report a Problem…"));
             Append(menu, MENU_ITEM_FLAGS.MF_SEPARATOR, 0, null);
-            Append(menu, MENU_ITEM_FLAGS.MF_STRING, QuitCommand, "Quit Glide");
+            Append(menu, text, QuitCommand, T("Quit Glide"));
 
             PInvoke.GetCursorPos(out var point);
             // The menu only closes on an outside click if its owner is in the foreground.
@@ -133,6 +193,24 @@ internal sealed unsafe class TrayIcon : IDisposable
             PInvoke.DestroyMenu(menu);
         }
     }
+
+    /// <summary>Shortcuts ▸ every action by group, each runnable from here, and the sheet that lists them all.</summary>
+    private static void AppendShortcuts(HMENU menu, MenuContents contents, Func<string?, string> keys)
+    {
+        var shortcuts = PInvoke.CreatePopupMenu();
+        Append(shortcuts, MENU_ITEM_FLAGS.MF_STRING, ShortcutSheetCommand, T("Show All Shortcuts") + keys(contents.ShortcutSheetShortcut));
+        Append(shortcuts, MENU_ITEM_FLAGS.MF_SEPARATOR, 0, null);
+        foreach (var (group, actions) in contents.Shortcuts)
+        {
+            var submenu = PInvoke.CreatePopupMenu();
+            foreach (var (action, title, shortcut) in actions)
+                Append(submenu, MENU_ITEM_FLAGS.MF_STRING, ActionCommand(action), $"{title}{keys(shortcut)}");
+            Append(shortcuts, MENU_ITEM_FLAGS.MF_STRING | MENU_ITEM_FLAGS.MF_POPUP, (nuint)(nint)submenu.Value, group);
+        }
+        Append(menu, MENU_ITEM_FLAGS.MF_STRING | MENU_ITEM_FLAGS.MF_POPUP, (nuint)(nint)shortcuts.Value, T("Shortcuts"));
+    }
+
+    private static nuint ActionCommand(GlideAction action) => ActionCommandBase + (nuint)(int)action;
 
     private static void Append(HMENU menu, MENU_ITEM_FLAGS flags, nuint id, string? text)
     {
@@ -151,8 +229,8 @@ internal sealed unsafe class TrayIcon : IDisposable
             uCallbackMessage = CallbackMessage,
             hIcon = icon,
         };
-        var others = inUse.Count > 1 ? $" · In use: {string.Join(", ", inUse)}" : "";
-        data.szTip = $"Glide · Workspace {workspace}{others}{(enabled ? "" : " · Tiling off")}";
+        var others = inUse.Count > 1 ? " · " + T("In use: {0}", string.Join(", ", inUse)) : "";
+        data.szTip = T("Glide · Workspace {0}", workspace) + others + (enabled ? "" : " · " + T("Tiling off"));
         data.Anonymous.uVersion = PInvoke.NOTIFYICON_VERSION_4;
         return data;
     }

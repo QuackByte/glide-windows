@@ -2,6 +2,22 @@
 
 What's new in each version of Glide for Windows. Glide shows the new entries once after it updates, and each release's notes on GitHub come from here, so write for people using Glide. Add an entry for every change worth knowing about under the next version before tagging it.
 
+## 0.9.0
+
+### New
+
+- **See where a dragged window will land.** While you drag a window, an outline in the focus ring color shows the column it would join, tab bar included. Over another monitor, a bar shows where it would go between that monitor's columns. No highlight means it will snap back.
+- **A fuller tray menu.** It lists the workspaces in use with how many windows each holds; pick one to go there. Under **Shortcuts** is every action with its shortcut, to run it from the menu. When "Take over Windows shortcuts" is off, the menu also lists the shortcuts Windows keeps.
+- **Every shortcut on one page.** Win+Ctrl+/ (the key with ? on a US keyboard) shows them all; press it again or Esc to close. It's also in the tray menu, under Shortcuts.
+- **Report a Problem**, in the tray menu and in Settings › General. Glide puts its log and settings in a zip, with window titles taken out, and opens a new issue on GitHub for you to describe what happened and attach the zip. Nothing is sent by itself.
+- **Glide habla español.** When Windows is in Spanish, Glide is too, installer included. What's New stays in English.
+
+### Fixes
+
+- **Full screen stays full screen.** A video, a game or F11 in a browser is no longer pulled back into its column. Glide leaves it alone, hides the focus ring, dimming and tab bar over it, and lets the horizontal wheel and touchpad swipes reach it.
+- Switching to another of Windows' virtual desktops and back keeps your columns in the same order.
+- Closing a window no longer pulls focus away from Glide's own windows, such as What's New or Settings.
+
 ## 0.8.1 — 2026-10-14
 
 ### Fixes

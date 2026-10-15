@@ -1,3 +1,5 @@
+using static Glide.Core.Strings;
+
 namespace Glide.Core;
 
 /// <summary>Which shortcut triggers which action: the defaults plus any user overrides.</summary>
@@ -37,6 +39,8 @@ public sealed class Keymap : IEquatable<Keymap>
             [GlideAction.ToggleOverview] = new(KeyCode.Tab, win),
             [GlideAction.ToggleFloating] = new(KeyCode.V, command),
             [GlideAction.ToggleTiling] = new(KeyCode.T, commandShift),
+            // The key with "?" on it, on US keyboards.
+            [GlideAction.ShowShortcuts] = new(KeyCode.Slash, command),
             [GlideAction.FocusPreviousWorkspace] = new(KeyCode.LeftArrow, command),
             [GlideAction.FocusNextWorkspace] = new(KeyCode.RightArrow, command),
             [GlideAction.MoveColumnToPreviousWorkspace] = new(KeyCode.LeftArrow, commandShift),
@@ -170,20 +174,20 @@ public static class ShortcutPolicy
         var key = combo.KeyCode;
         return combo.Modifiers switch
         {
-            win when key is KeyCode.LeftArrow or KeyCode.RightArrow => "Snap left or right",
-            win when key == KeyCode.UpArrow => "Maximize",
-            win when key == KeyCode.DownArrow => "Restore or minimize",
-            win when key == KeyCode.Home => "Minimize other windows",
-            win when key == KeyCode.Tab => "Task View",
-            win when KeyCode.Digits.Contains(key) => "Open the taskbar app in that position",
-            win | shift when key is KeyCode.LeftArrow or KeyCode.RightArrow => "Move the window to another monitor",
-            win | shift when key is KeyCode.UpArrow or KeyCode.DownArrow => "Stretch the window vertically",
-            win | shift when KeyCode.Digits.Contains(key) => "Open another instance of the taskbar app",
-            win | ctrl when key is KeyCode.LeftArrow or KeyCode.RightArrow => "Switch virtual desktop",
-            win | ctrl when key == KeyCode.D => "New virtual desktop",
-            win | ctrl when key == KeyCode.F => "Find computers",
-            win | ctrl when key == KeyCode.C => "Color filters",
-            win | ctrl when key == KeyCode.V => "Sound output",
+            win when key is KeyCode.LeftArrow or KeyCode.RightArrow => T("Snap left or right"),
+            win when key == KeyCode.UpArrow => T("Maximize"),
+            win when key == KeyCode.DownArrow => T("Restore or minimize"),
+            win when key == KeyCode.Home => T("Minimize other windows"),
+            win when key == KeyCode.Tab => T("Task View"),
+            win when KeyCode.Digits.Contains(key) => T("Open the taskbar app in that position"),
+            win | shift when key is KeyCode.LeftArrow or KeyCode.RightArrow => T("Move the window to another monitor"),
+            win | shift when key is KeyCode.UpArrow or KeyCode.DownArrow => T("Stretch the window vertically"),
+            win | shift when KeyCode.Digits.Contains(key) => T("Open another instance of the taskbar app"),
+            win | ctrl when key is KeyCode.LeftArrow or KeyCode.RightArrow => T("Switch virtual desktop"),
+            win | ctrl when key == KeyCode.D => T("New virtual desktop"),
+            win | ctrl when key == KeyCode.F => T("Find computers"),
+            win | ctrl when key == KeyCode.C => T("Color filters"),
+            win | ctrl when key == KeyCode.V => T("Sound output"),
             _ => null,
         };
     }
@@ -195,20 +199,20 @@ public static class ShortcutPolicy
         var primary = modifiers & ~KeyModifiers.Shift;
 
         if (primary == KeyModifiers.None && !KeyCode.IsFunctionKey(key))
-            return new Verdict.Rejected("Add Win, Ctrl or Alt so the shortcut doesn't block normal typing.");
+            return new Verdict.Rejected(T("Add Win, Ctrl or Alt so the shortcut doesn't block normal typing."));
         if (key == KeyCode.L && modifiers == KeyModifiers.Win)
-            return new Verdict.Rejected("Windows locks the PC with Win+L before any app sees it.");
+            return new Verdict.Rejected(T("Windows locks the PC with Win+L before any app sees it."));
         if (key == KeyCode.Delete && modifiers.HasFlag(KeyModifiers.Control | KeyModifiers.Alt))
-            return new Verdict.Rejected("Ctrl+Alt+Del is reserved by Windows.");
+            return new Verdict.Rejected(T("Ctrl+Alt+Del is reserved by Windows."));
         if (KeyCode.Arrows.Contains(key) || key == KeyCode.Home || key == KeyCode.End)
         {
             if (primary is KeyModifiers.Control or KeyModifiers.Alt or (KeyModifiers.Control | KeyModifiers.Alt))
-                return new Verdict.Warning($"{modifiers.Prefix()}arrows move the cursor in text fields or go back in browsers.");
+                return new Verdict.Warning(T("{0}arrows move the cursor in text fields or go back in browsers.", modifiers.Prefix()));
         }
         if (modifiers == KeyModifiers.Alt && (key == KeyCode.Tab || key == KeyCode.Space || key == KeyCode.F1 + 3))
-            return new Verdict.Warning($"{combo} is a standard Windows command.");
+            return new Verdict.Warning(T("{0} is a standard Windows command.", combo));
         if (modifiers == KeyModifiers.Control && key is 'C' or 'V' or 'X' or 'Z' or 'S' or 'W' or (uint)KeyCode.Tab)
-            return new Verdict.Warning($"{combo} is a standard Windows command.");
+            return new Verdict.Warning(T("{0} is a standard Windows command.", combo));
         return new Verdict.Ok();
     }
 }

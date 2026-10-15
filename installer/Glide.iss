@@ -1,4 +1,4 @@
-; Glide's installer: per-user (no administrator rights), built by build.ps1.
+﻿; Glide's installer: per-user (no administrator rights), built by build.ps1.
 ; iscc /DArch=x64|arm64 /DVersion=0.1.0 Glide.iss, after publishing to ..\artifacts\publish-<arch>.
 
 #ifndef Arch
@@ -38,13 +38,27 @@ UninstallDisplayIcon={app}\Glide.exe
 UninstallDisplayName=Glide
 ; Glide is asked to quit (and restore its windows) below, not closed by Restart Manager.
 CloseApplications=no
-; Glide contacts GitHub for updates, so the installer shows its privacy policy and offers to turn
-; that off (the "updates" task below).
-InfoBeforeFile=Privacy.txt
+ShowLanguageDialog=no
+
+[Languages]
+; Picked from Windows' display language. Glide contacts GitHub for updates, so the installer
+; shows its privacy policy, in each language, and offers to turn that off (the "updates" task below).
+Name: "en"; MessagesFile: "compiler:Default.isl"; InfoBeforeFile: "Privacy.txt"
+Name: "es"; MessagesFile: "compiler:Languages\Spanish.isl"; InfoBeforeFile: "Privacy.es.txt"
+
+[CustomMessages]
+en.StartAtSignIn=Start Glide when I sign in
+es.StartAtSignIn=Abrir Glide al iniciar sesión
+en.CheckForUpdates=Check for updates (asks GitHub for the latest version twice a day)
+es.CheckForUpdates=Buscar actualizaciones (pregunta a GitHub por la última versión dos veces al día)
+en.ScrollingWindowManager=Scrolling window manager
+es.ScrollingWindowManager=Gestor de ventanas con desplazamiento
+en.StartGlideNow=Start Glide now
+es.StartGlideNow=Abrir Glide ahora
 
 [Tasks]
-Name: startup; Description: "Start Glide when I sign in"; Flags: unchecked
-Name: updates; Description: "Check for updates (asks GitHub for the latest version once a day)"
+Name: startup; Description: "{cm:StartAtSignIn}"; Flags: unchecked
+Name: updates; Description: "{cm:CheckForUpdates}"
 
 [InstallDelete]
 ; Files from the previous version, so an upgrade doesn't mix DLLs.
@@ -54,7 +68,7 @@ Type: filesandordirs; Name: "{app}\*"
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "*.pdb"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\Glide"; Filename: "{app}\Glide.exe"; Comment: "Scrolling window manager"
+Name: "{autoprograms}\Glide"; Filename: "{app}\Glide.exe"; Comment: "{cm:ScrollingWindowManager}"
 
 [Registry]
 ; Glide reads the updates choice on its next start and removes the value (Settings.ApplyInstallerChoices).
@@ -64,7 +78,7 @@ Root: HKCU; Subkey: "Software\Glide"; ValueType: dword; ValueName: "CheckForUpda
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Glide"; ValueData: """{app}\Glide.exe"""; Flags: uninsdeletevalue; Tasks: startup
 
 [Run]
-Filename: "{app}\Glide.exe"; Description: "Start Glide now"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\Glide.exe"; Description: "{cm:StartGlideNow}"; Flags: nowait postinstall skipifsilent
 ; Updates run silently with /UPDATE=1: start the new Glide when they're done.
 Filename: "{app}\Glide.exe"; Flags: nowait; Check: IsUpdate
 

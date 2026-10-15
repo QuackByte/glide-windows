@@ -3,6 +3,7 @@ using Glide.Platform;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using static Glide.Core.Strings;
 
 namespace Glide;
 
@@ -81,7 +82,7 @@ internal sealed class TabBars(GlideHost host)
                 HorizontalContentAlignment = HorizontalAlignment.Left,
                 Content = IconImages.Labeled(window, new TextBlock
                 {
-                    Text = title.Length > 0 ? title : "Untitled",
+                    Text = title.Length > 0 ? title : T("Untitled"),
                     TextTrimming = TextTrimming.CharacterEllipsis,
                     FontSize = 12,
                     FontWeight = active ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal,
@@ -91,7 +92,7 @@ internal sealed class TabBars(GlideHost host)
                 }),
             };
             ToolTipService.SetToolTip(tab, title);
-            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(tab, $"Tab: {title}");
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(tab, T("Tab: {0}", title));
             tab.Click += (_, _) => host.GoTo(window);
             Grid.SetColumn(tab, index);
             grid.Children.Add(tab);

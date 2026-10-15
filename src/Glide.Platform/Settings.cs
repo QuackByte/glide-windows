@@ -57,6 +57,8 @@ public sealed class Settings
     public bool InstallUpdatesAutomatically { get; set; } = false;
     /// <summary>The GitHub repository ("owner/name") whose releases carry Glide's installers.</summary>
     public string UpdateRepository { get; set; } = "QuackByte/glide-windows";
+    /// <summary>"auto" follows Windows' display language; "en" or "es" choose. Takes effect when Glide restarts.</summary>
+    public string Language { get; set; } = "auto";
     /// <summary>The version whose "What's new" was last shown; a newer Glide shows its own once.</summary>
     public string? LastSeenVersion { get; set; }
     /// <summary>Overrides of the default shortcuts, by action name. "none" removes one.</summary>

@@ -6,7 +6,7 @@ namespace Glide.Platform;
 
 /// <summary>
 /// Window lifecycle events from every process: shown, hidden, destroyed, focused, minimized,
-/// cloaked, and moved or resized by the user. Delivered on the thread that installs the hooks.
+/// cloaked, moved or resized by the user, and moved at all (to notice windows going full screen). Delivered on the thread that installs the hooks.
 /// </summary>
 internal sealed unsafe class WinEventHooks : IDisposable
 {
@@ -16,6 +16,7 @@ internal sealed unsafe class WinEventHooks : IDisposable
         (Win32.EVENT_SYSTEM_MOVESIZESTART, Win32.EVENT_SYSTEM_MOVESIZEEND),
         (Win32.EVENT_SYSTEM_MINIMIZESTART, Win32.EVENT_SYSTEM_MINIMIZEEND),
         (Win32.EVENT_OBJECT_DESTROY, Win32.EVENT_OBJECT_HIDE),
+        (Win32.EVENT_OBJECT_LOCATIONCHANGE, Win32.EVENT_OBJECT_LOCATIONCHANGE),
         (Win32.EVENT_OBJECT_CLOAKED, Win32.EVENT_OBJECT_UNCLOAKED),
     ];
 

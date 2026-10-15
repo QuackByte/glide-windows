@@ -207,6 +207,24 @@ public class DepartureTests
     }
 
     [Fact]
+    public void WindowsLeavingTogetherComeBackInOrderWhateverOrderTheyReturnIn()
+    {
+        // Switching virtual desktop: every window leaves, one after another, then they come back in another order.
+        var set = new WorkspaceSet(Viewport);
+        set.Active.Strip = new Strip([Col([1]), Col([2]), Col([3, 4]), Col([5])]);
+        var before = set.ColumnWindows(0);
+        var departures = new Dictionary<long, WorkspaceSet.Departure>();
+        foreach (var id in new long[] { 1, 3, 2, 5, 4 })
+        {
+            departures[id] = set.DepartureOf(id, before)!;
+            set.Remove(id);
+        }
+        Assert.True(set.Active.Strip.IsEmpty);
+        foreach (var id in new long[] { 5, 3, 1, 4, 2 }) set.Rejoin(id, departures[id], focus: false);
+        Assert.Equal([[1], [2], [3, 4], [5]], Layout(set.Active.Strip));
+    }
+
+    [Fact]
     public void FallsBackWhenTheNeighbourIsGone()
     {
         var set = Make();

@@ -3,6 +3,7 @@ using System.Text.Json;
 using Glide.Core;
 using Windows.Win32;
 using Windows.Win32.Foundation;
+using static Glide.Core.Strings;
 
 namespace Glide.Platform;
 
@@ -18,7 +19,7 @@ namespace Glide.Platform;
 /// </remarks>
 internal sealed class WindowManager : IDisposable
 {
-    private const nuint AnimationTimer = 1, SettleTimer = 2, WheelTimer = 4, SnapshotTimer = 5;
+    private const nuint AnimationTimer = 1, SettleTimer = 2, WheelTimer = 4, SnapshotTimer = 5, DragTimer = 6;
     /// <summary>How far one wheel notch moves the strip, as a share of the screen.</summary>
     private const double NotchFraction = 0.12;
     private static readonly string snapshotPath = Path.Combine(Settings.Directory, "layouts.json");
@@ -48,9 +49,16 @@ internal sealed class WindowManager : IDisposable
     private readonly Dictionary<WindowId, Borders> borders = [];
     /// <summary>Windows that left (minimized, hidden, cloaked), their monitor, and where to put them back.</summary>
     private readonly Dictionary<WindowId, (string Device, WorkspaceSet.Departure Departure)> departures = [];
+    /// <summary>
+    /// Windows leaving together (switching virtual desktop hides them all at once) all remember the
+    /// workspace as it was before the first one left, so they come back in order whatever order they return in.
+    /// </summary>
+    private (string Device, IReadOnlyList<IReadOnlyList<IReadOnlyList<WindowId>>> Workspaces, long Until)? leaving;
     private readonly HashSet<WindowId> userFloating = [], userTiled = [];
     /// <summary>Windows waiting out of sight: hidden tabs, inactive workspaces, columns kept off a neighbouring monitor.</summary>
     private readonly HashSet<WindowId> hidden = [];
+    /// <summary>Tiled windows showing full screen (F11, a video): left where they are, without ring, dimming or tab bar, until they come back.</summary>
+    private readonly HashSet<WindowId> fullscreen = [];
 
     private Dictionary<WindowId, (Rect From, Rect To)> motions = [];
     private long animationStart;
@@ -66,6 +74,9 @@ internal sealed class WindowManager : IDisposable
     private IReadOnlyList<int> workspacesInUse = [];
     /// <summary>The window the user is dragging or resizing with the mouse; the ring waits until they let go.</summary>
     private WindowId? dragging;
+    /// <summary>Where the dragged window was when the drag began, its highlight color, and whether it can tile (looked up once it matters).</summary>
+    private (Rect Start, uint Color, bool? CanTile)? drag;
+    private readonly DropHighlightWindow dropHighlight = new();
     private IReadOnlyList<TabBar> currentTabBars = [];
     /// <summary>Where apps go, learned from the layout: see <see cref="AppMemory"/>.</summary>
     private AppMemory memory = LoadMemory();
@@ -99,6 +110,14 @@ internal sealed class WindowManager : IDisposable
     public event Action? WorkspacesInUseChanged;
 
     public IReadOnlyList<int> WorkspacesInUse => displays.Count == 0 ? [1] : [.. spaces.Occupied.Append(spaces.ActiveIndex).Distinct().Order().Select(i => i + 1)];
+
+    /// <summary>For the tray menu: the focused monitor's workspaces in use (and the active one), with how many windows each holds.</summary>
+    public IReadOnlyList<(int Number, int Windows, bool IsActive)> WorkspaceSummary =>
+        displays.Count == 0 ? [] : [.. WorkspacesInUse.Select(n => (n, spaces.Workspaces[n - 1].Strip.Windows.Count, n - 1 == spaces.ActiveIndex))];
+
+    /// <summary>For the tray menu: windows and columns on the focused monitor's active workspace.</summary>
+    public (int Windows, int Columns) ActiveWorkspaceCounts =>
+        displays.Count == 0 ? (0, 0) : (spaces.Active.Strip.Windows.Count, spaces.Active.Strip.Columns.Count);
 
     private IEnumerable<WindowId> AllWindows => displays.SelectMany(d => d.Spaces.AllWindows);
 
@@ -156,6 +175,7 @@ internal sealed class WindowManager : IDisposable
         display.Spaces.Remove(id);
         placed.Remove(id);
         hidden.Remove(id);
+        fullscreen.Remove(id);
         motions.Remove(id);
         Native.SetVisibleFrame(hwnd, FloatingFrame(hwnd, display), Native.BordersOf(hwnd));
     }
@@ -191,7 +211,7 @@ internal sealed class WindowManager : IDisposable
     /// <summary>Dims the monitor behind the focused tiled window, when that's on.</summary>
     private void DrawDimming(WindowId? focused)
     {
-        if (!settings.DimUnfocused || focused is not { } id || hidden.Contains(id) || Find(id) is not var (display, _))
+        if (!settings.DimUnfocused || focused is not { } id || hidden.Contains(id) || fullscreen.Contains(id) || Find(id) is not var (display, _))
         {
             dimming.Hide();
             return;
@@ -213,7 +233,7 @@ internal sealed class WindowManager : IDisposable
         // Windows move asynchronously, so right after a layout a window may not be where it was
         // sent yet: the ring goes where it's going, and is corrected once windows have landed.
         Rect? Frame(WindowId id) => !landed && placed.TryGetValue(id, out var sent) ? sent : Native.VisibleFrame(Native.Hwnd(id));
-        if (target is not var (id, color) || settings.FocusRingWidth <= 0 || motions.ContainsKey(id) || hidden.Contains(id) || dragging == id
+        if (target is not var (id, color) || settings.FocusRingWidth <= 0 || motions.ContainsKey(id) || hidden.Contains(id) || dragging == id || fullscreen.Contains(id)
             || Find(id) is not var (display, _) || Frame(id) is not { } frame)
         {
             ring.Hide();
@@ -294,6 +314,7 @@ internal sealed class WindowManager : IDisposable
         SaveSnapshots();
         LearnPlacements();
         IsEnabled = false;
+        StopDropHighlight();
         UpdateFocusRing();
         var restoredCount = 0;
         foreach (var display in displays)
@@ -320,6 +341,7 @@ internal sealed class WindowManager : IDisposable
         userFloating.Clear();
         userTiled.Clear();
         hidden.Clear();
+        fullscreen.Clear();
         StateChanged?.Invoke();
     }
 
@@ -394,7 +416,7 @@ internal sealed class WindowManager : IDisposable
             Log.Info($"Moved column to workspace {index + 1}");
             Layout();
             FocusActive();
-            Announce($"Column sent to workspace {index + 1}");
+            Announce(T("Column sent to workspace {0}", index + 1));
         }
         else
         {
@@ -416,7 +438,7 @@ internal sealed class WindowManager : IDisposable
         FocusActive();
         Log.Info($"Workspace {index + 1} on {focused}: {spaces.Active.Strip}");
         StateChanged?.Invoke();
-        Announce(spaces.Active.Strip.IsEmpty ? $"Workspace {index + 1} is empty" : $"Workspace {index + 1}");
+        Announce(spaces.Active.Strip.IsEmpty ? T("Workspace {0} is empty", index + 1) : T("Workspace {0}", index + 1));
     }
 
     private void Announce(string message) =>
@@ -438,7 +460,7 @@ internal sealed class WindowManager : IDisposable
         focused = target;
         FocusActive();
         StateChanged?.Invoke();
-        Announce($"Workspace {spaces.ActiveIndex + 1}");
+        Announce(T("Workspace {0}", spaces.ActiveIndex + 1));
     }
 
     /// <summary>Sends the focused column to the next monitor that way, where it lands right of the focused column and keeps focus.</summary>
@@ -583,6 +605,7 @@ internal sealed class WindowManager : IDisposable
             {
                 foreach (var bar in display.Spaces.Active.TabBars())
                 {
+                    if (fullscreen.Contains(bar.ActiveWindow)) continue;
                     // While its column slides, the bar rides along with the active tab.
                     var frame = bar.Frame;
                     if (motions.TryGetValue(bar.ActiveWindow, out var motion))
@@ -669,15 +692,44 @@ internal sealed class WindowManager : IDisposable
             case Win32.EVENT_OBJECT_DESTROY:
                 Forget(id);
                 break;
+            case Win32.EVENT_OBJECT_LOCATIONCHANGE:
+                // Frequent (every frame of every slide): handled on its own, without the ring.
+                OnLocationChange(id, hwnd);
+                return;
             case Win32.EVENT_SYSTEM_MOVESIZESTART:
                 dragging = id;
+                StartDropHighlight(hwnd);
                 break;
             case Win32.EVENT_SYSTEM_MOVESIZEEND:
                 dragging = null;
+                StopDropHighlight();
                 OnUserMoveOrResize(id, hwnd);
                 break;
         }
         UpdateFocusRing();
+    }
+
+    /// <summary>A tiled window going full screen is left alone; when it comes back, it goes back to its column.</summary>
+    private void OnLocationChange(WindowId id, HWND hwnd)
+    {
+        if (motions.ContainsKey(id) || dragging == id || hidden.Contains(id) || Find(id) is null) return;
+        // Where Glide put it doesn't count: with no gap and a hidden taskbar, a full-width column covers the screen too.
+        var isFullscreen = Native.IsFullscreen(hwnd)
+                           && !(placed.TryGetValue(id, out var sent) && Native.VisibleFrame(hwnd) is { } frame
+                                && Math.Abs(frame.X - sent.X) <= 2 && Math.Abs(frame.Y - sent.Y) <= 2
+                                && Math.Abs(frame.Width - sent.Width) <= 2 && Math.Abs(frame.Height - sent.Height) <= 2);
+        if (isFullscreen == fullscreen.Contains(id)) return;
+        if (isFullscreen)
+        {
+            fullscreen.Add(id);
+            Log.Info($"{Describe(id)} went full screen");
+            UpdateFocusRing();
+            return;
+        }
+        fullscreen.Remove(id);
+        placed.Remove(id);
+        Log.Info($"{Describe(id)} left full screen");
+        Layout();
     }
 
     private void OnForeground(WindowId id, HWND hwnd)
@@ -743,16 +795,22 @@ internal sealed class WindowManager : IDisposable
 
     private void Depart(WindowId id)
     {
-        if (Find(id) is not var (display, _) || display.Spaces.DepartureOf(id) is not { } departure) return;
+        if (Find(id) is not var (display, workspace)) return;
+        if (leaving is not var (device, _, until) || device != display.Device || Stopwatch.GetTimestamp() > until)
+            leaving = (display.Device, [.. Enumerable.Range(0, WorkspaceSet.Count).Select(display.Spaces.ColumnWindows)], 0);
+        leaving = leaving.Value with { Until = Deadline(0.5) };
+        if (display.Spaces.DepartureOf(id, leaving.Value.Workspaces[workspace]) is not { } departure) return;
         var wasFocused = focused == display && spaces.Active.Strip.FocusedWindow == id;
         departures[id] = (display.Device, departure);
         display.Spaces.Remove(id);
         placed.Remove(id);
         hidden.Remove(id);
+        fullscreen.Remove(id);
         Log.Debug($"{Describe(id)} left: {display.Spaces.Active.Strip}");
         Layout();
         // Windows would otherwise activate whatever is next in z-order, maybe on another workspace.
-        if (wasFocused) FocusActive();
+        // Not if one of Glide's own windows is in front: closing a window behind it mustn't bury it.
+        if (wasFocused && !Native.IsOwn(Native.Foreground)) FocusActive();
     }
 
     private void Forget(WindowId id)
@@ -767,10 +825,12 @@ internal sealed class WindowManager : IDisposable
         placed.Remove(id);
         borders.Remove(id);
         hidden.Remove(id);
+        fullscreen.Remove(id);
         motions.Remove(id);
         Log.Debug($"Window {id} closed: {display.Spaces.Active.Strip}");
         Layout();
-        if (wasFocused) FocusActive();
+        // Not if one of Glide's own windows is in front: closing a window behind it mustn't bury it.
+        if (wasFocused && !Native.IsOwn(Native.Foreground)) FocusActive();
     }
 
     /// <summary>
@@ -798,23 +858,89 @@ internal sealed class WindowManager : IDisposable
             Layout();
             return;
         }
-        if (Native.CursorPosition is { } cursor && DropTarget(id, cursor) is { } drop)
+        switch (Native.CursorPosition is { } cursor ? DropAt(id, cursor, () => Native.Inspect(hwnd).CanTile) : null)
         {
-            if (home is null && !Native.Inspect(hwnd).CanTile) return;
-            MoveIntoColumn(id, drop.Display, drop.Sibling);
-            return;
-        }
-        if (home is var (from, _) && Native.CursorPosition is { } point && DisplayNamed(Native.MonitorAtCursor()) is var to && to != from
-            && to.WorkArea.Contains(new Rect(point.X, point.Y, 0, 0)))
-        {
-            MoveToDisplay(id, from, to, point.X);
-            return;
+            case IntoColumn(var target, var sibling):
+                MoveIntoColumn(id, target, sibling);
+                return;
+            case ToMonitor(var from, var to, var x):
+                MoveToDisplay(id, from, to, x);
+                return;
         }
         if (home is not null)
         {
             placed[id] = actual;
             Layout();
         }
+    }
+
+    /// <summary>What letting go of a dragged window does, besides snapping back.</summary>
+    private abstract record Drop;
+    /// <summary>It joins <c>Sibling</c>'s column (a stack, or tabs).</summary>
+    private sealed record IntoColumn(Display Display, WindowId Sibling) : Drop;
+    /// <summary>It becomes a column on another monitor's strip, near <c>X</c>.</summary>
+    private sealed record ToMonitor(Display From, Display To, double X) : Drop;
+
+    /// <summary>
+    /// Where a window dragged to <paramref name="point"/> lands if let go there: into the column under
+    /// the pointer (floating windows too, when they can tile), or for a tiled window, onto the
+    /// monitor under the pointer. Null when it snaps back.
+    /// </summary>
+    private Drop? DropAt(WindowId id, Point point, Func<bool> canTile)
+    {
+        var home = Find(id);
+        if (DropTarget(id, point) is var (display, sibling))
+            return home is not null || canTile() ? new IntoColumn(display, sibling) : null;
+        if (home is var (from, _) && DisplayNamed(Native.MonitorAtCursor()) is var to && to != from
+            && to.WorkArea.Contains(new Rect(point.X, point.Y, 0, 0)))
+            return new ToMonitor(from, to, point.X);
+        return null;
+    }
+
+    private void StartDropHighlight(HWND hwnd)
+    {
+        if (Native.VisibleFrame(hwnd) is not { } start) return;
+        drag = (start, Native.ParseColor(settings.FocusRingColor), null);
+        window.StartTimer(DragTimer, 25, UpdateDropHighlight);
+    }
+
+    private void StopDropHighlight()
+    {
+        window.StopTimer(DragTimer);
+        drag = null;
+        dropHighlight.Hide();
+    }
+
+    /// <summary>While a window is dragged, shows where it would land: see <see cref="DropAt"/>.</summary>
+    private void UpdateDropHighlight()
+    {
+        if (dragging is not { } id || drag is not var (start, color, canTile))
+        {
+            StopDropHighlight();
+            return;
+        }
+        var hwnd = Native.Hwnd(id);
+        // Only moving lands anywhere: a resize changes the size, and a window that hasn't moved yet stays put.
+        var moved = Native.VisibleFrame(hwnd) is { } now && Math.Abs(now.Width - start.Width) <= 2 && Math.Abs(now.Height - start.Height) <= 2
+                    && (Math.Abs(now.X - start.X) > 2 || Math.Abs(now.Y - start.Y) > 2);
+        var drop = moved && Native.CursorPosition is { } cursor
+            ? DropAt(id, cursor, () => (canTile ??= Native.Inspect(hwnd).CanTile) is true)
+            : null;
+        drag = (start, color, canTile);
+        (Rect? Frame, double Scale) target = drop switch
+        {
+            IntoColumn(var display, var sibling) => (display.Spaces.Active.ColumnFrame(sibling), display.Monitor.Scale),
+            ToMonitor(_, var to, var x) => (to.Spaces.Active.InsertionFrame(MonitorGeometry.DropIndex(to.Spaces.Active, x), Math.Round(4 * to.Monitor.Scale)), to.Monitor.Scale),
+            _ => (null, 1),
+        };
+        if (target.Frame is not { } frame)
+        {
+            dropHighlight.Hide();
+            return;
+        }
+        // Windows 11 rounds window corners by 8 px at 100%.
+        var radius = Environment.OSVersion.Version.Build >= 22000 ? (int)Math.Round(8 * target.Scale) : 0;
+        dropHighlight.Show(hwnd, frame, color, (int)Math.Round(3 * target.Scale), radius);
     }
 
     /// <summary>The tiled window whose column a drop at <paramref name="point"/> joins: a tab bar's, or the window under it.</summary>
@@ -1053,6 +1179,8 @@ internal sealed class WindowManager : IDisposable
                         || (displays.Count > 1 && placement.Visibility is not Visibility.Visible && CrossesIntoAnotherMonitor(placement.Frame, display));
                     var to = isHidden ? new Rect(spot, placement.Frame.Size) : placement.Frame;
                     var wasHidden = isHidden ? !hidden.Add(id) : hidden.Remove(id);
+                    // Full screen stays full screen while it's showing; going out of sight ends it.
+                    if (fullscreen.Contains(id) && (!isHidden || !fullscreen.Remove(id))) continue;
                     if (placed.TryGetValue(id, out var last) && last == to && !motions.ContainsKey(id)) continue;
 
                     var from = motions.TryGetValue(id, out var motion) ? FrameAnimation.Frame(motion.From, motion.To, progress)
@@ -1112,7 +1240,7 @@ internal sealed class WindowManager : IDisposable
             var workspace = display.Spaces.Active;
             foreach (var placement in workspace.Placements())
             {
-                if (placement.Visibility != Visibility.Visible) continue;
+                if (placement.Visibility != Visibility.Visible || fullscreen.Contains(placement.Window)) continue;
                 var hwnd = Native.Hwnd(placement.Window);
                 if (Native.VisibleFrame(hwnd) is not { } actual) continue;
                 var frame = placement.Frame;
@@ -1237,6 +1365,7 @@ internal sealed class WindowManager : IDisposable
         StopAnimationTimer();
         ring.Dispose();
         dimming.Dispose();
+        dropHighlight.Dispose();
     }
 }
 
