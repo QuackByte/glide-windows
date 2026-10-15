@@ -2,7 +2,7 @@
 
 What's new in each version of Glide for Windows. Glide shows the new entries once after it updates, and each release's notes on GitHub come from here, so write for people using Glide. Add an entry for every change worth knowing about under the next version before tagging it.
 
-## 0.9.0
+## 0.9.0 — 2026-10-15
 
 ### New
 
