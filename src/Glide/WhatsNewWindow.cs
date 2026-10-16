@@ -149,16 +149,23 @@ public sealed partial class WhatsNewWindow : Window
 
     private static Changelog LoadChangelog()
     {
+        var english = Read("CHANGELOG.md");
+        // Releases without a translation yet show in English.
+        return Strings.Language == "en" ? english : english.WithTranslation(Read($"CHANGELOG.{Strings.Language}.md"));
+    }
+
+    private static Changelog Read(string resource)
+    {
         try
         {
-            using var stream = typeof(WhatsNewWindow).Assembly.GetManifestResourceStream("CHANGELOG.md");
+            using var stream = typeof(WhatsNewWindow).Assembly.GetManifestResourceStream(resource);
             if (stream is null) return Changelog.Parse("");
             using var reader = new StreamReader(stream);
             return Changelog.Parse(reader.ReadToEnd());
         }
         catch (Exception e)
         {
-            Log.Error("Couldn't read the changelog", e);
+            Log.Error($"Couldn't read {resource}", e);
             return Changelog.Parse("");
         }
     }

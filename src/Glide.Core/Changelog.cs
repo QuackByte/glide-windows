@@ -85,6 +85,18 @@ public sealed partial class Changelog
     }
 
     /// <summary>
+    /// This changelog (English, the source of truth for which releases exist) with each release
+    /// replaced by <paramref name="translation"/>'s when that has the same version; a release it
+    /// lacks stays as is. Order and versions are always this changelog's.
+    /// </summary>
+    public Changelog WithTranslation(Changelog translation)
+    {
+        var translated = new Dictionary<Version, Release>();
+        foreach (var release in translation.Releases) translated.TryAdd(Normalize(release.Version), release);
+        return new Changelog([.. Releases.Select(r => translated.TryGetValue(Normalize(r.Version), out var t) ? t with { Version = r.Version, Date = r.Date } : r)]);
+    }
+
+    /// <summary>
     /// The releases someone who last saw <paramref name="seen"/> hasn't seen, up to and including
     /// <paramref name="current"/>, newest first. With no <paramref name="seen"/>, just the current one.
     /// </summary>

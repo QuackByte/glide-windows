@@ -28,6 +28,8 @@
     <Content Include="Assets\Glide.ico" CopyToOutputDirectory="PreserveNewest" />
     <!-- Read by the "What's new" window. -->
     <EmbeddedResource Include="..\..\CHANGELOG.md" LogicalName="CHANGELOG.md" />
+    <!-- Its translations, CHANGELOG.<language>.md; a release missing from one shows in English. -->
+    <EmbeddedResource Include="..\..\changelog\CHANGELOG.*.md" LogicalName="%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260921001" />
