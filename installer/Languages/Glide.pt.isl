@@ -1,6 +1,5 @@
-﻿; TODO translate: the text after each = into this language (keep the names before the =).
-[CustomMessages]
-StartAtSignIn=Start Glide when I sign in
-CheckForUpdates=Check for updates (asks GitHub for the latest version twice a day)
-ScrollingWindowManager=Scrolling window manager
-StartGlideNow=Start Glide now
+﻿[CustomMessages]
+StartAtSignIn=Abrir o Glide ao entrar
+CheckForUpdates=Buscar atualizações (consulta o GitHub duas vezes por dia para saber a versão mais recente)
+ScrollingWindowManager=Gerenciador de janelas com rolagem
+StartGlideNow=Abrir o Glide agora
