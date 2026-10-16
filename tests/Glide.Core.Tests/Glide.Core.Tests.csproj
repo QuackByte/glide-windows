@@ -15,5 +15,6 @@
   <ItemGroup>
     <!-- Checked by ChangelogTests, so a malformed entry fails CI before it ships. -->
     <None Include="../../CHANGELOG.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../changelog/CHANGELOG.*.md" Link="changelog/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

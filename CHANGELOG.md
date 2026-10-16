@@ -1,6 +1,6 @@
 # Changelog
 
-What's new in each version of Glide for Windows. Glide shows the new entries once after it updates, and each release's notes on GitHub come from here, so write for people using Glide. Add an entry for every change worth knowing about under the next version before tagging it.
+What's new in each version of Glide for Windows. Glide shows the new entries once after it updates, and each release's notes on GitHub come from here, so write for people using Glide. Add an entry for every change worth knowing about under the next version before tagging it, and translate it in each file of `changelog/` (`CHANGELOG.es.md`, `CHANGELOG.fr.md` and so on, same versions, sections and links): Glide shows the notes in its own language, and a test checks they match this file. The GitHub notes stay English.
 
 ## 0.9.2 — 2026-10-16
 
@@ -12,7 +12,7 @@ What's new in each version of Glide for Windows. Glide shows the new entries onc
 
 ### New
 
-- **Glide speaks your language.** Glide is now in French, German, Japanese, Simplified Chinese, Korean and Brazilian Portuguese, as well as English and Spanish, installer included. It follows Windows' display language, or choose one under Settings › General › Language. What's New stays in English.
+- **Glide speaks your language.** Glide is now in French, German, Japanese, Simplified Chinese, Korean and Brazilian Portuguese, as well as English and Spanish, installer included. It follows Windows' display language, or choose one under Settings › General › Language.
 
 ## 0.9.0 — 2026-10-15
 
