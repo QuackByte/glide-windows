@@ -9,7 +9,9 @@ namespace Glide.Core.Tests;
 /// </summary>
 public partial class ChangelogTranslationTests
 {
-    public static TheoryData<string> Languages => new() { "es", "fr", "de", "ja", "zh", "ko", "pt" };
+    private static readonly string[] LanguageCodes = ["es", "fr", "de", "ja", "zh", "ko", "pt"];
+
+    public static TheoryData<string> Languages => new(LanguageCodes);
 
     [GeneratedRegex(@"https?://[^\s)\]>]+")]
     private static partial Regex Url();
@@ -26,7 +28,7 @@ public partial class ChangelogTranslationTests
         // Strings.Languages is the app's list; the theory above must cover every non-English one.
         Assert.Equal(
             Strings.Languages.Select(l => l.Code).Where(c => c != "en").Order(StringComparer.Ordinal),
-            Languages.Select(l => (string)l[0]).Order(StringComparer.Ordinal));
+            LanguageCodes.Order(StringComparer.Ordinal));
     }
 
     [Theory]
