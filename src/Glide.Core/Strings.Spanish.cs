@@ -180,6 +180,8 @@ public static partial class Strings
         ["Install updates automatically"] = "Instalar las actualizaciones automáticamente",
         ["Install a newer version as soon as Glide finds it, instead of waiting for a click on the tray icon. Glide restarts to finish."] = "Instala una versión nueva en cuanto Glide la encuentra, sin esperar a que hagas clic en el icono de la bandeja. Glide se reinicia para terminar.",
         ["Files"] = "Archivos",
+        ["Language"] = "Idioma",
+        ["Automatic follows Windows. Glide uses a new choice the next time it starts."] = "Automático sigue el idioma de Windows. Glide usa la nueva elección la próxima vez que se abra.",
         ["Open settings file"] = "Abrir el archivo de configuración",
         ["Open log"] = "Abrir el registro",
         ["Settings and log"] = "Configuración y registro",
