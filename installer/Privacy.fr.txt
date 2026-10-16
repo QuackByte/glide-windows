@@ -1,0 +1,9 @@
+﻿Politique de confidentialité de Glide
+
+Glide ne collecte, ne stocke et ne partage aucune donnée personnelle. Vos paramètres, raccourcis, règles d’apps et la disposition de vos fenêtres restent sur ce PC, dans %APPDATA%\Glide. Glide tient un journal dans %LOCALAPPDATA%\Glide, qui reste lui aussi sur ce PC.
+
+Recherche de mises à jour : pour rester à jour, Glide demande à GitHub (api.github.com) deux fois par jour s’il existe une version plus récente, et la télécharge depuis GitHub lorsque vous l’installez. Cette requête contient la version de Glide et, comme toute requête, votre adresse IP ; rien d’autre n’est envoyé. GitHub la traite conformément à sa déclaration de confidentialité : https://docs.github.com/fr/site-policy/privacy-policies/github-general-privacy-statement
+
+Vous pouvez désactiver la recherche de mises à jour sur la page suivante de cet installateur, ou plus tard dans les paramètres de Glide, sous Mises à jour.
+
+Politique complète : https://quackbyte.dev/glide/fr/confidentialite/

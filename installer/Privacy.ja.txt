@@ -1,0 +1,9 @@
+﻿Glideのプライバシーポリシー
+
+Glideは、個人データを収集、保存、共有することはありません。設定、ショートカット、アプリのルール、ウィンドウのレイアウトは、このPC上の%APPDATA%\Glideに保存されます。Glideは%LOCALAPPDATA%\Glideにログも保存しますが、これもこのPC上にとどまります。
+
+更新の確認：Glideは最新の状態を保つため、1日に2回、新しいリリースがあるかどうかをGitHub（api.github.com）に問い合わせ、インストール時にGitHubからダウンロードします。このリクエストには、Glideのバージョンと、通常のリクエストと同様にIPアドレスが含まれ、それ以外は送信されません。GitHubは、自社のプライバシーに関する声明に従ってこれを取り扱います：https://docs.github.com/ja/site-policy/privacy-policies/github-general-privacy-statement
+
+更新の確認は、このインストーラーの次のページで、またはインストール後にGlideの設定の「更新」からオフにできます。
+
+ポリシー全文：https://quackbyte.dev/glide/ja/privacy/

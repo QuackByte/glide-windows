@@ -43,18 +43,15 @@ ShowLanguageDialog=no
 [Languages]
 ; Picked from Windows' display language. Glide contacts GitHub for updates, so the installer
 ; shows its privacy policy, in each language, and offers to turn that off (the "updates" task below).
-Name: "en"; MessagesFile: "compiler:Default.isl"; InfoBeforeFile: "Privacy.txt"
-Name: "es"; MessagesFile: "compiler:Languages\Spanish.isl"; InfoBeforeFile: "Privacy.es.txt"
-
-[CustomMessages]
-en.StartAtSignIn=Start Glide when I sign in
-es.StartAtSignIn=Abrir Glide al iniciar sesión
-en.CheckForUpdates=Check for updates (asks GitHub for the latest version twice a day)
-es.CheckForUpdates=Buscar actualizaciones (pregunta a GitHub por la última versión dos veces al día)
-en.ScrollingWindowManager=Scrolling window manager
-es.ScrollingWindowManager=Gestor de ventanas con desplazamiento
-en.StartGlideNow=Start Glide now
-es.StartGlideNow=Abrir Glide ahora
+Name: "en"; MessagesFile: "compiler:Default.isl,Languages\Glide.en.isl"; InfoBeforeFile: "Privacy.txt"
+Name: "es"; MessagesFile: "compiler:Languages\Spanish.isl,Languages\Glide.es.isl"; InfoBeforeFile: "Privacy.es.txt"
+Name: "fr"; MessagesFile: "compiler:Languages\French.isl,Languages\Glide.fr.isl"; InfoBeforeFile: "Privacy.fr.txt"
+Name: "de"; MessagesFile: "compiler:Languages\German.isl,Languages\Glide.de.isl"; InfoBeforeFile: "Privacy.de.txt"
+Name: "ja"; MessagesFile: "compiler:Languages\Japanese.isl,Languages\Glide.ja.isl"; InfoBeforeFile: "Privacy.ja.txt"
+; Simplified Chinese isn't an official translation; ChineseSimplified.isl is vendored (see its first lines).
+Name: "zh"; MessagesFile: "Languages\ChineseSimplified.isl,Languages\Glide.zh.isl"; InfoBeforeFile: "Privacy.zh.txt"
+Name: "ko"; MessagesFile: "compiler:Languages\Korean.isl,Languages\Glide.ko.isl"; InfoBeforeFile: "Privacy.ko.txt"
+Name: "pt"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl,Languages\Glide.pt.isl"; InfoBeforeFile: "Privacy.pt.txt"
 
 [Tasks]
 Name: startup; Description: "{cm:StartAtSignIn}"; Flags: unchecked

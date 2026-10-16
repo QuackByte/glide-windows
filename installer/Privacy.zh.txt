@@ -1,0 +1,9 @@
+﻿Glide 隐私政策
+
+Glide 不会收集、存储或分享任何个人数据。你的设置、快捷键、应用规则和窗口布局都保存在这台电脑上的 %APPDATA%\Glide 中。Glide 还会在 %LOCALAPPDATA%\Glide 中保存一份日志，该日志同样只保留在这台电脑上。
+
+更新检查：为保持自身为最新版本，Glide 每天会向 GitHub (api.github.com) 查询两次是否有新版本，并在你安装时从 GitHub 下载。该请求包含 Glide 的版本号，并且与任何请求一样会带有你的 IP 地址，除此之外不会发送任何其他内容。GitHub 会按照其隐私声明处理该请求：https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement
+
+你可以在本安装程序的下一页关闭更新检查，也可以日后在 Glide 的“设置”中的“更新”下关闭。
+
+完整政策：https://quackbyte.dev/glide/privacy/

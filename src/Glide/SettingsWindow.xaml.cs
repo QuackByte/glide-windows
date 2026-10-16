@@ -238,6 +238,17 @@ public sealed partial class SettingsWindow : Window
              T("Install a newer version as soon as Glide finds it, instead of waiting for a click on the tray icon. Glide restarts to finish."),
              Toggle(settings.InstallUpdatesAutomatically, on => { settings.InstallUpdatesAutomatically = on; Apply(); }));
 
+        Section(T("Language"));
+        var languageCodes = Strings.Languages.Select(l => l.Code).Prepend("auto").ToList();
+        var languageNames = Strings.Languages.Select(l => l.Name).Prepend(T("Automatic")).ToList();
+        var language = Choice(languageNames, Math.Max(languageCodes.IndexOf(settings.Language.ToLowerInvariant()), 0), 220);
+        language.SelectionChanged += (_, _) =>
+        {
+            settings.Language = languageCodes[Math.Max(language.SelectedIndex, 0)];
+            Apply();
+        };
+        Card(T("Language"), T("Automatic follows Windows. Glide uses a new choice the next time it starts."), language);
+
         Section(T("Files"));
         var openSettings = new Button { Content = T("Open settings file") };
         openSettings.Click += (_, _) => GlideHost.OpenInEditor(Settings.FilePath);

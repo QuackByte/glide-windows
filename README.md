@@ -103,7 +103,7 @@ Action names are those in [`Action.cs`](src/Glide.Core/Action.cs). `focusRingCol
 - **Full screen**: a window that goes full screen (F11 in a browser, a video, a game) is left alone until it comes back, without the ring, dimming or tab bar over it, and the horizontal wheel and touchpad swipes go to it instead of the strip. Win + the wheel still glides the strip.
 - **Windows' virtual desktops**: Glide tiles the desktop you're on. Windows on other desktops leave the strip while you're away and come back in the same order. Win+Ctrl+←/→ are Glide's by default; switch desktops from Task View, or turn off "Take over Windows shortcuts" to get them back.
 - **Report a problem** (tray menu, or Settings › General): Glide puts its log and settings in a zip, with window titles taken out, shows it in Explorer and opens a new GitHub issue to describe the problem and attach the zip. Nothing is sent by itself.
-- **Language**: Glide, its installer included, is in English or, when Windows is in Spanish, Spanish. `language` in settings.json chooses (`auto`, `en` or `es`) the next time Glide starts. What's New stays in English.
+- **Language**: Glide, its installer included, speaks English, Spanish, French, German, Japanese, Simplified Chinese, Korean and Brazilian Portuguese, following Windows' display language (Traditional Chinese stays English). Settings › General has a Language picker; `language` in settings.json chooses too (`auto`, `en`, `es`, `fr`, `de`, `ja`, `zh`, `ko` or `pt`). Either takes effect the next time Glide starts. What's New stays in English.
 
 ## Build and run
 

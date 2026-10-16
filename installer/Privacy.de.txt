@@ -1,0 +1,9 @@
+﻿Datenschutzerklärung von Glide
+
+Glide erhebt, speichert und teilt keine personenbezogenen Daten. Deine Einstellungen, Tastenkürzel, App-Regeln und die Fensteranordnung bleiben auf diesem PC, in %APPDATA%\Glide. Glide führt ein Protokoll in %LOCALAPPDATA%\Glide, das ebenfalls auf diesem PC bleibt.
+
+Update-Prüfungen: Um sich aktuell zu halten, fragt Glide zweimal täglich bei GitHub (api.github.com) nach, ob es eine neuere Version gibt, und lädt sie von GitHub herunter, wenn du sie installierst. Diese Anfrage enthält die Version von Glide und, wie jede Anfrage, deine IP-Adresse; sonst wird nichts gesendet. GitHub verarbeitet sie gemäß seiner Datenschutzerklärung: https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement
+
+Du kannst die Update-Prüfungen auf der nächsten Seite dieses Installationsprogramms oder später in den Einstellungen von Glide unter „Updates“ ausschalten.
+
+Vollständige Erklärung: https://quackbyte.dev/glide/privacy/
