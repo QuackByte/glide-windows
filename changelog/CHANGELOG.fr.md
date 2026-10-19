@@ -2,6 +2,12 @@
 
 Ce fichier est la traduction française de CHANGELOG.md, qui reste l’original. Il présente les nouveautés de chaque version de Glide pour Windows. Glide affiche les nouvelles entrées une seule fois après une mise à jour, et les notes de chaque version sur GitHub en sont issues.
 
+## 0.10.1 — 2026-10-19
+
+### Corrections
+
+- **En disposition en mosaïque, Win+[ et Win+] créent des groupes d’onglets.** Win+[ ajoute la fenêtre active à un groupe d’onglets, une colonne d’onglets, et Win+] sort un onglet pour le placer dans sa propre tuile, comme c’était déjà le cas en défilement. Faire glisser une fenêtre sur une barre d’onglets fonctionne comme avant.
+
 ## 0.10.0 — 2026-10-19
 
 ### Nouveautés

@@ -2,6 +2,12 @@
 
 What's new in each version of Glide for Windows. Glide shows the new entries once after it updates, and each release's notes on GitHub come from here, so write for people using Glide. Add an entry for every change worth knowing about under the next version before tagging it, and translate it in each file of `changelog/` (`CHANGELOG.es.md`, `CHANGELOG.fr.md` and so on, same versions, sections and links): Glide shows the notes in its own language, and a test checks they match this file. The GitHub notes stay English.
 
+## 0.10.1 — 2026-10-19
+
+### Fixes
+
+- **In the tiled layout, Win+[ and Win+] make tab groups.** Win+[ adds the focused window to a tab group, a column of tabs, and Win+] moves a tab out into its own tile, as they already did when scrolling. Dragging a window onto a tab bar works as before.
+
 ## 0.10.0 — 2026-10-19
 
 ### New
