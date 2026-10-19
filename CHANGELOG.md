@@ -2,6 +2,13 @@
 
 What's new in each version of Glide for Windows. Glide shows the new entries once after it updates, and each release's notes on GitHub come from here, so write for people using Glide. Add an entry for every change worth knowing about under the next version before tagging it, and translate it in each file of `changelog/` (`CHANGELOG.es.md`, `CHANGELOG.fr.md` and so on, same versions, sections and links): Glide shows the notes in its own language, and a test checks they match this file. The GitHub notes stay English.
 
+## 0.10.2 — 2026-10-19
+
+### Fixes
+
+- **In the tiled layout, Win+Up and Win+Down switch tabs in a tab group before moving to the tile in that direction.** They step through the tabs of the focused group first, and once there are no more tabs that way, they move to the tile in that direction.
+- **In the tiled layout, the tiles beside an app with a minimum width shrink to fit it instead of overlapping.** Glide learns each app's minimum width, and when a resize stops at that width, a message says why.
+
 ## 0.10.1 — 2026-10-19
 
 ### Fixes

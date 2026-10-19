@@ -2,6 +2,13 @@
 
 Novedades de cada versión de Glide para Windows. Glide muestra las entradas nuevas una sola vez tras actualizarse, y las notas de cada versión en GitHub salen de aquí. Esta es una traducción de CHANGELOG.md, que es el original.
 
+## 0.10.2 — 2026-10-19
+
+### Correcciones
+
+- **En la disposición en mosaico, Win+flecha arriba y Win+flecha abajo cambian primero de pestaña dentro de un grupo de pestañas y luego pasan al mosaico en esa dirección.** Cuando no quedan más pestañas en esa dirección, pasan al mosaico que hay en ella.
+- **En la disposición en mosaico, los mosaicos junto a una app con anchura mínima se encogen para caber en ella, en lugar de superponerse.** Glide aprende la anchura mínima de cada app, y cuando un cambio de tamaño se detiene en esa anchura, un mensaje explica por qué.
+
 ## 0.10.1 — 2026-10-19
 
 ### Correcciones

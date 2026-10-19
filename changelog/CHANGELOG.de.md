@@ -2,6 +2,13 @@
 
 Neuigkeiten in jeder Version von Glide für Windows. Glide zeigt die neuen Einträge einmal nach einem Update an, und die Hinweise zu jedem Release auf GitHub stammen von hier. Dies ist eine Übersetzung von CHANGELOG.md, das Original ist die englische Datei.
 
+## 0.10.2 — 2026-10-19
+
+### Korrekturen
+
+- **In der gekachelten Anordnung wechseln Win+Pfeil nach oben und Win+Pfeil nach unten zuerst die Registerkarten einer Registerkartengruppe und dann zur Kachel in dieser Richtung.** Gibt es in dieser Richtung keine Registerkarten mehr, geht es zur Kachel in dieser Richtung.
+- **In der gekachelten Anordnung schrumpfen die Kacheln neben einer App mit Mindestbreite, damit sie hineinpassen, statt sich zu überlappen.** Glide merkt sich die Mindestbreite jeder App, und wenn ein Größenändern an dieser Breite endet, sagt eine Meldung, warum.
+
 ## 0.10.1 — 2026-10-19
 
 ### Korrekturen
