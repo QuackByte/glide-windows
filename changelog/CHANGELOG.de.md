@@ -2,6 +2,22 @@
 
 Neuigkeiten in jeder Version von Glide für Windows. Glide zeigt die neuen Einträge einmal nach einem Update an, und die Hinweise zu jedem Release auf GitHub stammen von hier. Dies ist eine Übersetzung von CHANGELOG.md, das Original ist die englische Datei.
 
+## 0.10.0 — 2026-10-19
+
+### Neu
+
+- **Gekachelt ist jetzt eine spiralförmige Anordnung.** Mit Win+Strg+T schaltest du einen Arbeitsbereich auf eine Anordnung um, in der alle Fenster auf den Bildschirm passen: Ein Fenster füllt ihn, zwei teilen ihn sich als Hälften, und ab dem dritten wird die letzte Spalte erneut geteilt, abwechselnd oben und unten mit links und rechts. Sie nutzt 2 Spalten oder 3 mit dem neuen Win+Strg+G, was Glide auch auf Ultrawide-Monitoren wählt. Wechselst du zurück zu Scrollend, bleiben deine Fenster in derselben Reihenfolge.
+- **Bewege dich in einem gekachelten Arbeitsbereich nach Richtung.** Win+Pfeiltasten fokussieren die Kachel neben der fokussierten, und Win+Shift+Pfeiltasten tauschen sie mit diesem Nachbarn. Das Wechseln der Breite (Win+Strg+R) ändert, wie die fokussierte Kachel den Platz mit den folgenden Kacheln teilt, und Win+Strg+F zoomt eine Kachel auf den ganzen Bildschirm, bis du es erneut drückst.
+- **Wähle, wie viele Spalten gekachelte Arbeitsbereiche nutzen,** unter Einstellungen › Allgemein › Gekachelte Spalten: Automatisch (3 auf Ultrawide-Monitoren, sonst 2), 2 oder 3.
+
+### Änderungen
+
+- **Ein Fenster in einen anderen Arbeitsbereich zu schicken, verschiebt nur dieses Fenster.** Win+Shift+1…9 und Win+Strg+Shift+←/→ nahmen früher die ganze Spalte mit, jetzt geht nur das fokussierte Fenster als eigene Spalte, und du bleibst im aktuellen Arbeitsbereich.
+
+### Korrekturen
+
+- **Brasilianisches Portugiesisch für die Einstellung Anordnung.** Ihre Beschreibung unter Einstellungen › Allgemein ist jetzt auf brasilianischem Portugiesisch formuliert („tela“, „você“) statt auf europäischem.
+
 ## 0.9.3 — 2026-10-19
 
 ### Neu

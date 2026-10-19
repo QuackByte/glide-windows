@@ -2,6 +2,22 @@
 
 Ce fichier est la traduction française de CHANGELOG.md, qui reste l’original. Il présente les nouveautés de chaque version de Glide pour Windows. Glide affiche les nouvelles entrées une seule fois après une mise à jour, et les notes de chaque version sur GitHub en sont issues.
 
+## 0.10.0 — 2026-10-19
+
+### Nouveautés
+
+- **Mosaïque devient une disposition en spirale.** Win+Ctrl+T fait passer un bureau à une disposition où toutes les fenêtres tiennent à l’écran : une fenêtre le remplit, deux se le partagent en moitiés, et à partir de la troisième la dernière colonne se divise encore, en alternant haut et bas avec gauche et droite. Elle utilise 2 colonnes, ou 3 avec le nouveau Win+Ctrl+G, ce que Glide choisit aussi sur les écrans ultralarges. Revenir à Défilement conserve l’ordre de vos fenêtres.
+- **Déplacez-vous dans un bureau en mosaïque selon la direction.** Win+flèches donnent le focus à la tuile voisine de celle qui l’a, et Win+Shift+flèches l’échangent avec ce voisin. Changer la largeur (Win+Ctrl+R) modifie la façon dont la tuile active partage la place avec les tuiles suivantes, et Win+Ctrl+F agrandit une tuile pour remplir l’écran jusqu’à ce que vous appuyiez de nouveau dessus.
+- **Choisissez le nombre de colonnes des bureaux en mosaïque** dans Paramètres › Général › Colonnes en mosaïque : Automatique (3 sur les écrans ultralarges, sinon 2), 2 ou 3.
+
+### Modifications
+
+- **Envoyer une fenêtre vers un autre bureau ne déplace que cette fenêtre.** Win+Shift+1…9 et Win+Ctrl+Shift+←/→ emportaient auparavant toute la colonne ; désormais seule la fenêtre active part, dans une colonne à elle, et vous restez sur le bureau où vous êtes.
+
+### Corrections
+
+- **Portugais brésilien pour le paramètre Disposition.** Sa description dans Paramètres › Général est maintenant en portugais brésilien (« tela », « você ») et non européen.
+
 ## 0.9.3 — 2026-10-19
 
 ### Nouveautés
