@@ -136,7 +136,7 @@ public static partial class Strings
         ["Layout"] = "Layout",
         ["Scrolling"] = "Rolagem",
         ["Tiled"] = "Mosaico",
-        ["Scrolling keeps columns at set widths on a strip you scroll along; tiled fits every column on screen. New and untouched workspaces use this. {0} switches the current workspace."] = "Rolagem mantém as colunas com larguras fixas numa faixa que se percorre; mosaico faz caber todas as colunas no ecrã. Os espaços de trabalho novos e os que não alterou usam esta opção. {0} alterna o espaço de trabalho atual.",
+        ["Scrolling keeps columns at set widths on a strip you scroll along; tiled fits every column on screen. New and untouched workspaces use this. {0} switches the current workspace."] = "Rolagem mantém as colunas com larguras fixas numa faixa pela qual você rola; mosaico faz caber todas as colunas na tela. Os espaços de trabalho novos e os que você não alterou usam esta opção. {0} alterna o espaço de trabalho atual.",
         ["A shortcut"] = "Um atalho",
         ["Start Glide when I sign in"] = "Abrir o Glide ao entrar",
         ["Starts as administrator."] = "Abre como administrador.",
