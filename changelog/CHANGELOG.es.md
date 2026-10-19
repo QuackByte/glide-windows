@@ -2,6 +2,12 @@
 
 Novedades de cada versión de Glide para Windows. Glide muestra las entradas nuevas una sola vez tras actualizarse, y las notas de cada versión en GitHub salen de aquí. Esta es una traducción de CHANGELOG.md, que es el original.
 
+## 0.10.1 — 2026-10-19
+
+### Correcciones
+
+- **En la disposición en mosaico, Win+[ y Win+] crean grupos de pestañas.** Win+[ añade la ventana enfocada a un grupo de pestañas, una columna de pestañas, y Win+] saca una pestaña a su propio mosaico, como ya hacían al desplazarse. Arrastrar una ventana a una barra de pestañas funciona como antes.
+
 ## 0.10.0 — 2026-10-19
 
 ### Novedades

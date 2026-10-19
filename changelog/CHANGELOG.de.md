@@ -2,6 +2,12 @@
 
 Neuigkeiten in jeder Version von Glide für Windows. Glide zeigt die neuen Einträge einmal nach einem Update an, und die Hinweise zu jedem Release auf GitHub stammen von hier. Dies ist eine Übersetzung von CHANGELOG.md, das Original ist die englische Datei.
 
+## 0.10.1 — 2026-10-19
+
+### Korrekturen
+
+- **In der gekachelten Anordnung erstellen Win+[ und Win+] Registerkartengruppen.** Win+[ fügt das fokussierte Fenster einer Registerkartengruppe hinzu, einer Spalte mit Registerkarten, und Win+] löst einen Tab wieder heraus in eine eigene Kachel, wie es beim Scrollen schon war. Ein Fenster auf eine Registerkartenleiste zu ziehen funktioniert wie zuvor.
+
 ## 0.10.0 — 2026-10-19
 
 ### Neu

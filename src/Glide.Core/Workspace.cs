@@ -494,8 +494,8 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
             case GlideAction.MoveWindowDown: return MoveTile(TileSide.Down);
             case GlideAction.FocusFirstColumn: return Strip.FocusFirstColumn();
             case GlideAction.FocusLastColumn: return Strip.FocusLastColumn();
-            // Tiles are windows, never stacks: there is nothing to consume or expel.
-            case GlideAction.ConsumeOrExpelLeft or GlideAction.ConsumeOrExpelRight: return false;
+            case GlideAction.ConsumeOrExpelLeft: return ConsumeOrExpelTile(HorizontalDirection.Left);
+            case GlideAction.ConsumeOrExpelRight: return ConsumeOrExpelTile(HorizontalDirection.Right);
             case GlideAction.CycleColumnWidth: return CycleTiledRatio(forward: true);
             case GlideAction.CycleColumnWidthBackward: return CycleTiledRatio(forward: false);
             case GlideAction.ToggleFullWidth:
@@ -503,6 +503,25 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
                 return true;
             default: return null;
         }
+    }
+
+    /// <summary>
+    /// A window in a tab group with others is expelled into a new tile on that side. A window alone
+    /// in its tile joins the tile next to it on that side as a tab, which makes that tile tabbed so
+    /// it stays one tile. Returns false if there is no tile on that side.
+    /// </summary>
+    private bool ConsumeOrExpelTile(HorizontalDirection direction)
+    {
+        if (Strip.FocusedColumn is not { } column) return false;
+        if (column.Windows.Count > 1) return Strip.ConsumeOrExpel(direction);
+        var side = direction == HorizontalDirection.Left ? TileSide.Left : TileSide.Right;
+        if (TiledLayout.Neighbour(TileFrames(Tiles()), Strip.FocusedColumnIndex, side) is not int target) return false;
+        var window = column.FocusedWindow;
+        var sibling = Strip.Columns[target].FocusedWindow;
+        Strip.Remove(window);
+        Strip.Join(window, sibling);
+        Strip.Columns[Strip.FocusedColumnIndex].IsTabbed = true;
+        return true;
     }
 
     /// <summary>Moves focus to the tile next to the focused one on a side.</summary>

@@ -2,6 +2,12 @@
 
 Novidades de cada versão do Glide para Windows. O Glide mostra as novas entradas uma vez após se atualizar, e as notas de cada versão no GitHub vêm daqui, então escreva para quem usa o Glide. Adicione uma entrada para cada mudança que vale a pena conhecer na próxima versão antes de criar a tag. Esta é uma tradução de CHANGELOG.md, que é o original.
 
+## 0.10.1 — 2026-10-19
+
+### Correções
+
+- **No layout em mosaico, Win+[ e Win+] criam grupos de abas.** Win+[ adiciona a janela em foco a um grupo de abas, uma coluna de abas, e Win+] tira uma aba para o próprio mosaico, como já faziam na rolagem. Arrastar uma janela para uma barra de abas funciona como antes.
+
 ## 0.10.0 — 2026-10-19
 
 ### Novidades
