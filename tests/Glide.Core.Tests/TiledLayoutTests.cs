@@ -358,6 +358,66 @@ public class TiledLayoutTests
     }
 
     [Fact]
+    public void FocusWindowSwitchesTabsInTheFocusedTabGroup()
+    {
+        var ws = new Workspace(new Strip([Col([1]), Col([2, 3, 4], focusedRow: 0, isTabbed: true)], focusedColumnIndex: 1), Viewport) { LayoutOverride = LayoutMode.Tiled };
+        Assert.True(ws.Perform(GlideAction.FocusWindowDown));
+        Assert.Equal(3, ws.Strip.FocusedWindow!.Value.Value);
+        Assert.True(ws.Perform(GlideAction.FocusWindowDown));
+        Assert.Equal(4, ws.Strip.FocusedWindow!.Value.Value);
+        Assert.True(ws.Perform(GlideAction.FocusWindowUp));
+        Assert.Equal(3, ws.Strip.FocusedWindow!.Value.Value);
+        Assert.True(ws.Perform(GlideAction.FocusWindowUp));
+        Assert.Equal(2, ws.Strip.FocusedWindow!.Value.Value);
+        Assert.Equal(1, ws.Strip.FocusedColumnIndex);
+        Assert.Equal(Visibility.Visible, PlacementMap(ws)[2].Visibility);
+        Assert.Equal(Visibility.HiddenTab, PlacementMap(ws)[3].Visibility);
+    }
+
+    [Fact]
+    public void FocusWindowFallsBackToTheTileWhenTheTabsRunOut()
+    {
+        // [1 | (2 over (3 | 4 tabs))]: the tabbed tile is the bottom right one.
+        var ws = new Workspace(new Strip([Col([1]), Col([2]), Col([3, 4], focusedRow: 0, isTabbed: true)], focusedColumnIndex: 2), Viewport) { LayoutOverride = LayoutMode.Tiled };
+        Assert.True(ws.Perform(GlideAction.FocusWindowDown));
+        Assert.Equal(4, ws.Strip.FocusedWindow!.Value.Value);
+        Assert.False(ws.Perform(GlideAction.FocusWindowDown));
+        Assert.Equal(4, ws.Strip.FocusedWindow!.Value.Value);
+        Assert.True(ws.Perform(GlideAction.FocusWindowUp));
+        Assert.Equal(3, ws.Strip.FocusedWindow!.Value.Value);
+        Assert.True(ws.Perform(GlideAction.FocusWindowUp));
+        Assert.Equal(2, ws.Strip.FocusedWindow!.Value.Value);
+        Assert.Equal(1, ws.Strip.FocusedColumnIndex);
+        Assert.True(ws.Perform(GlideAction.FocusWindowDown));
+        Assert.Equal(3, ws.Strip.FocusedWindow!.Value.Value);
+        Assert.Equal(2, ws.Strip.FocusedColumnIndex);
+    }
+
+    [Fact]
+    public void FocusWindowOnAPlainTileIsStillATileMove()
+    {
+        // [1 | (2 over 3)]: 2 and 3 are separate tiles, not tabs, so Down moves to 3 as a tile move.
+        var ws = new Workspace(new Strip([Col([1]), Col([2]), Col([3])], focusedColumnIndex: 1), Viewport) { LayoutOverride = LayoutMode.Tiled };
+        Assert.True(ws.Perform(GlideAction.FocusWindowDown));
+        Assert.Equal(3, ws.Strip.FocusedWindow!.Value.Value);
+        Assert.Equal(2, ws.Strip.FocusedColumnIndex);
+        Assert.False(ws.Perform(GlideAction.FocusWindowDown));
+        Assert.Equal(3, ws.Strip.FocusedWindow!.Value.Value);
+    }
+
+    [Fact]
+    public void AZoomedTabGroupShowsTheTabThatIsFocused()
+    {
+        var ws = new Workspace(new Strip([Col([1]), Col([2, 3], isTabbed: true)], focusedColumnIndex: 1), Viewport) { LayoutOverride = LayoutMode.Tiled };
+        ws.Perform(GlideAction.ToggleFullWidth);
+        Assert.True(ws.Perform(GlideAction.FocusWindowDown));
+        Assert.Equal(3, ws.TabBars().Single().ActiveWindow);
+        Assert.Equal(Visibility.Visible, PlacementMap(ws)[3].Visibility);
+        Assert.Equal(1188, Frames(ws)[3].Width);
+        Assert.Equal(ws.TabBars().Single().Frame.X, Frames(ws)[3].X);
+    }
+
+    [Fact]
     public void FocusFirstAndLastAreTheFirstAndLastTiles()
     {
         var ws = Make(4, focused: 1);
