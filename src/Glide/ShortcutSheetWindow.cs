@@ -94,13 +94,13 @@ public sealed partial class ShortcutSheetWindow : Window
     }
 
     /// <summary>
-    /// The bound actions, as title and keys. "Focus Workspace 1…9" and "Move Column to Workspace 1…9"
+    /// The bound actions, as title and keys. "Focus Workspace 1…9" and "Move Window to Workspace 1…9"
     /// take one row each when their shortcuts follow the number row, as they do by default.
     /// </summary>
     private static List<(string Title, string Keys)> Rows(IReadOnlyList<(GlideAction Action, string Title, string? Shortcut)> actions)
     {
         var rows = new List<(string, string)>();
-        foreach (var (first, title) in new[] { (GlideAction.FocusWorkspace1, T("Focus Workspace 1…9")), (GlideAction.MoveColumnToWorkspace1, T("Move Column to Workspace 1…9")) })
+        foreach (var (first, title) in new[] { (GlideAction.FocusWorkspace1, T("Focus Workspace 1…9")), (GlideAction.MoveColumnToWorkspace1, T("Move Window to Workspace 1…9")) })
         {
             var nine = actions.Where(a => a.Action >= first && a.Action < first + 9).OrderBy(a => a.Action).ToList();
             if (nine.Count != 9 || nine.Any(a => a.Shortcut is null)) continue;

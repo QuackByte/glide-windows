@@ -1,6 +1,6 @@
 # Glide for Windows
 
-A keyboard-first scrolling window manager for Windows 11, the Windows counterpart of [Glide for macOS](https://github.com/QuackByte/glide). Windows are columns on an endless horizontal strip that you glide through with the keyboard, in the style of niri and PaperWM.
+A keyboard-first scrolling window manager for Windows 11, the Windows counterpart of [Glide for macOS](https://github.com/QuackByte/glide). Windows are columns on an endless horizontal strip that you glide through with the keyboard, in the style of niri and PaperWM. Prefer everything on screen? Any workspace can switch to a tiled layout instead.
 
 Status: early. Tiling on every monitor, workspaces, stacks and tabs, the overview, the Win-key shortcuts, mouse-wheel and touchpad scrolling, the settings window, the focus ring and the crash watchdog work. See [PLAN.md](PLAN.md), and [quackbyte.dev/glide](https://quackbyte.dev/glide/#platforms) for what each platform has.
 
@@ -23,14 +23,15 @@ Glide takes over the Windows key the way FancyZones' "Override Windows Snap" doe
 | Move window up / down | Win+Shift+↑ / ↓ | Stretch vertically |
 | Stack into the column on the left / right, or unstack | Win+[ / ] (the two keys right of P) | |
 | Switch to workspace 1…9 | Win+1…9 | Open the Nth taskbar app |
-| Send column to workspace 1…9 | Win+Shift+1…9 | New instance of the Nth taskbar app |
+| Send window to workspace 1…9 | Win+Shift+1…9 | New instance of the Nth taskbar app |
 | Previous / next workspace | Win+Ctrl+← / → | Switch virtual desktop |
-| Send column to previous / next workspace | Win+Ctrl+Shift+← / → | |
-| Cycle column width (backward) | Win+Ctrl+R (+Shift) | |
-| Toggle full width | Win+Ctrl+F | Find computers |
+| Send window to previous / next workspace | Win+Ctrl+Shift+← / → | |
+| Cycle column width (backward); tiled: the split | Win+Ctrl+R (+Shift) | |
+| Toggle full width; tiled: zoom the tile | Win+Ctrl+F | Find computers |
 | Center column | Win+Ctrl+C | Color filters |
 | Toggle tabbed column | Win+Ctrl+W | |
 | Switch the workspace between scrolling and tiled | Win+Ctrl+T | |
+| Switch the tiled workspace between 2 and 3 columns | Win+Ctrl+G | |
 | Toggle floating | Win+Ctrl+V | Sound output flyout |
 | Focus monitor left / right | Win+Alt+← / → | |
 | Send column to monitor left / right | Win+Alt+Shift+← / → | |
@@ -41,6 +42,16 @@ Glide takes over the Windows key the way FancyZones' "Override Windows Snap" doe
 Shortcuts follow key positions, like on macOS: Win+[ is the key right of P on any keyboard layout (the accent key on a Spanish keyboard), and Settings shows each shortcut with your keyboard's own labels.
 
 **Stacks**: Win+[ puts the focused window at the bottom of the column on its left, so the two share it, one above the other; Win+] does the same to the right. Pressed on a window that's already in a stack, they move it out into its own column on that side. Win+↑/↓ move between stacked windows, Win+Shift+↑/↓ reorder them, and Win+Ctrl+W turns the stack into tabs. While tiling is off, only Win+Ctrl+Shift+T stays with Glide; every other combo goes back to Windows.
+
+### Tiled layout
+
+Win+Ctrl+T switches the current workspace between the scrolling strip and a tiled layout, where every window fits on screen and nothing scrolls. Windows are tiled in order, like a dwindle or spiral layout: one window fills the screen, two share it as columns, and from the third on the last column splits again, top and bottom, then left and right, alternating. With two columns (the default) that gives `[1][2]`, `[1][2 over 3]`, `[1][2 over (3 | 4)]`…; with three, `[1][2][3]`, `[1][2][3 over 4]`, `[1][2][3 over (4 | 5)]`…. Win+Ctrl+G switches the workspace between 2 and 3 columns; by default Glide picks 3 on ultrawide monitors (at least twice as wide as tall) and 2 elsewhere.
+
+- **Order**: tiles follow the strip's columns left to right. Switching to tiled gives every window of a stack its own column (a tabbed column stays one tile, with its tab bar on top); switching back gives every column the default width. The order and focus survive both ways. A new window becomes the next tile after the focused one.
+- **Win+arrows** focus the tile next to the focused one in that direction, and **Win+Shift+arrows** swap it with that neighbour. Win+Home / End focus the first / last tile. Win+[ and ] do nothing.
+- **Win+Ctrl+R** steps the split between the focused tile and the rest through ⅓, ½ and ⅔ (the last tile changes the split before it). Dragging a tile's edge moves the same split. The splits start over when a window opens or closes.
+- **Win+Ctrl+F** zooms the focused tile to fill the screen until you press it again, or move focus away.
+- Windows with a minimum width that doesn't fit their tile get that width, overlapping their neighbour if they have to.
 
 ### Rebinding
 
@@ -60,6 +71,7 @@ Everything is stored in `%APPDATA%\Glide\settings.json` and applies as you chang
   "gap": 12,
   "animate": true,
   "defaultLayout": "Scrolling",
+  "tiledColumns": "auto",
   "focusRing": true,
   "focusRingColor": "accent",
   "focusRingWidth": 4,
@@ -81,7 +93,7 @@ Everything is stored in `%APPDATA%\Glide\settings.json` and applies as you chang
 }
 ```
 
-Action names are those in [`Action.cs`](src/Glide.Core/Action.cs). `focusRingColor` is `accent` or `#RRGGBB`; `horizontalWheel` is `Always`, `WithWin` or `Off`; `defaultLayout` is `Scrolling` or `Tiled` (any capitalization), for workspaces you haven't switched with Win+Ctrl+T. In rules, `mode` is `Automatic`, `Float` or `Tile`, `widthIndex` picks ⅓, ½, ⅔ or full (0–3), and `workspace` is zero-based.
+Action names are those in [`Action.cs`](src/Glide.Core/Action.cs). `focusRingColor` is `accent` or `#RRGGBB`; `horizontalWheel` is `Always`, `WithWin` or `Off`; `defaultLayout` is `Scrolling` or `Tiled` (any capitalization), for workspaces you haven't switched with Win+Ctrl+T; `tiledColumns` is `auto` (3 columns on ultrawide monitors, else 2), `2` or `3`, for tiled workspaces you haven't switched with Win+Ctrl+G. In rules, `mode` is `Automatic`, `Float` or `Tile`, `widthIndex` picks ⅓, ½, ⅔ or full (0–3), and `workspace` is zero-based.
 
 ## How it behaves
 

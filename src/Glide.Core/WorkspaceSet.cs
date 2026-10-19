@@ -76,13 +76,18 @@ public sealed class WorkspaceSet
     }
 
     /// <summary>
-    /// Sends the active workspace's focused column to another workspace, where it lands right of
-    /// that workspace's focused column and takes its focus. The active workspace stays.
+    /// Sends the active workspace's focused window, and only it, to another workspace. It lands
+    /// there as a column of its own right of that workspace's focused column and takes its focus. A
+    /// window alone in its column keeps the column's width; one taken from a stack gets the default
+    /// width. The active workspace stays, with the window's column-mates.
     /// </summary>
-    public bool MoveFocusedColumn(int index)
+    public bool MoveFocusedWindow(int index)
     {
-        if (!IsValid(index) || index == ActiveIndex || workspaces[ActiveIndex].Strip.RemoveFocusedColumn() is not { } column) return false;
-        workspaces[ActiveIndex].SettleScroll();
+        var source = workspaces[ActiveIndex];
+        if (!IsValid(index) || index == ActiveIndex || source.Strip.FocusedWindow is not { } window) return false;
+        var column = source.Strip.RemoveFocusedWindow(Settings.DefaultWidthIndex)!;
+        if (source.MinimumWidths.Remove(window, out var minimum)) workspaces[index].MinimumWidths[window] = minimum;
+        source.SettleScroll();
         workspaces[index].Strip.Insert(column);
         workspaces[index].EnsureFocusedVisible();
         return true;
@@ -162,13 +167,19 @@ public sealed class WorkspaceSet
         return target;
     }
 
-    /// <summary>Rebuilds the set from saved strips and their layouts (none: all follow the default), e.g. after a relaunch.</summary>
-    public void Restore(IReadOnlyList<Strip> strips, int activeIndex, IReadOnlyList<LayoutMode?>? layouts = null)
+    /// <summary>
+    /// Rebuilds the set from saved strips and their layouts, tiled column counts and split ratios
+    /// (none: all follow the default), e.g. after a relaunch.
+    /// </summary>
+    public void Restore(IReadOnlyList<Strip> strips, int activeIndex, IReadOnlyList<LayoutMode?>? layouts = null,
+                        IReadOnlyList<int?>? tiledColumns = null, IReadOnlyList<IReadOnlyList<double>?>? tiledRatios = null)
     {
         for (var index = 0; index < Count; index++)
         {
             workspaces[index].Strip = index < strips.Count ? strips[index] : new Strip();
             workspaces[index].LayoutOverride = layouts is not null && index < layouts.Count ? layouts[index] : null;
+            workspaces[index].TiledColumnsOverride = tiledColumns is not null && index < tiledColumns.Count ? tiledColumns[index] : null;
+            workspaces[index].TiledRatios = tiledRatios is not null && index < tiledRatios.Count ? tiledRatios[index] : null;
             workspaces[index].SettleScroll();
         }
         ActiveIndex = IsValid(activeIndex) ? activeIndex : 0;

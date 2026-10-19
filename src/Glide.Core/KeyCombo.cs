@@ -87,7 +87,7 @@ public static class KeyCode
 
     public static uint Letter(char letter) => char.ToUpperInvariant(letter);
 
-    public static readonly uint C = Letter('C'), D = Letter('D'), F = Letter('F'), L = Letter('L'), R = Letter('R'), T = Letter('T'), V = Letter('V'), W = Letter('W');
+    public static readonly uint C = Letter('C'), D = Letter('D'), F = Letter('F'), G = Letter('G'), L = Letter('L'), R = Letter('R'), T = Letter('T'), V = Letter('V'), W = Letter('W');
 
     public static readonly IReadOnlySet<uint> Arrows = new HashSet<uint> { LeftArrow, RightArrow, DownArrow, UpArrow };
     /// <summary>The number row, 1 through 9.</summary>

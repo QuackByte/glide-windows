@@ -2,6 +2,22 @@
 
 Novedades de cada versión de Glide para Windows. Glide muestra las entradas nuevas una sola vez tras actualizarse, y las notas de cada versión en GitHub salen de aquí. Esta es una traducción de CHANGELOG.md, que es el original.
 
+## 0.10.0 — 2026-10-19
+
+### Novedades
+
+- **Mosaico ahora es una disposición en espiral.** Win+Ctrl+T cambia un escritorio a una disposición en la que todas las ventanas caben en pantalla: una ventana la llena, dos la comparten como mitades, y desde la tercera la última columna vuelve a dividirse, alternando arriba y abajo con izquierda y derecha. Usa 2 columnas, o 3 con el nuevo Win+Ctrl+G, que es también lo que Glide elige en monitores ultrapanorámicos. Al volver a Desplazable, tus ventanas conservan el mismo orden.
+- **Muévete por un escritorio en mosaico según la dirección.** Win+flechas enfocan el mosaico contiguo al enfocado, y Win+Shift+flechas lo intercambian con ese vecino. Cambiar el ancho (Win+Ctrl+R) modifica cómo el mosaico enfocado reparte el espacio con los que van después, y Win+Ctrl+F amplía un mosaico para llenar la pantalla hasta que lo pulses de nuevo.
+- **Elige cuántas columnas usan los escritorios en mosaico** en Configuración › General › Columnas en mosaico: Automático (3 en monitores ultrapanorámicos, si no 2), 2 o 3.
+
+### Cambios
+
+- **Enviar una ventana a otro escritorio mueve solo esa ventana.** Win+Shift+1…9 y Win+Ctrl+Shift+←/→ antes se llevaban toda la columna; ahora solo va la ventana enfocada, como una columna propia, y tú te quedas en el escritorio donde estás.
+
+### Correcciones
+
+- **Portugués de Brasil en el ajuste Disposición.** Su descripción en Configuración › General ahora está en portugués de Brasil («tela», «você») en lugar de europeo.
+
 ## 0.9.3 — 2026-10-19
 
 ### Novedades

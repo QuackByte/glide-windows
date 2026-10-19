@@ -8,14 +8,15 @@ public enum LayoutMode
 {
     /// <summary>Columns keep their preset widths on a strip that scrolls.</summary>
     Scrolling,
-    /// <summary>Columns share the screen width, so they all fit on screen.</summary>
+    /// <summary>Every window fits on screen, tiled in a spiral: columns first, then the last column splits again and again.</summary>
     Tiled,
 }
 
 public sealed record LayoutSettings
 {
     public LayoutSettings(double gap = 12, double sliver = 4, IReadOnlyList<double>? widthPresets = null, int defaultWidthIndex = 1,
-                          double tabBarHeight = 28, double tabBarSpacing = 4, LayoutMode defaultLayout = LayoutMode.Scrolling)
+                          double tabBarHeight = 28, double tabBarSpacing = 4, LayoutMode defaultLayout = LayoutMode.Scrolling,
+                          int? defaultTiledColumns = null)
     {
         widthPresets ??= [1.0 / 3, 0.5, 2.0 / 3, 1];
         if (widthPresets.Count == 0) throw new ArgumentException("At least one width preset is required", nameof(widthPresets));
@@ -26,6 +27,7 @@ public sealed record LayoutSettings
         TabBarHeight = tabBarHeight;
         TabBarSpacing = tabBarSpacing;
         DefaultLayout = defaultLayout;
+        DefaultTiledColumns = defaultTiledColumns is { } columns ? TiledLayout.ClampColumns(columns) : null;
     }
 
     /// <summary>Space between columns, between stacked windows, and around the viewport edge.</summary>
@@ -40,6 +42,8 @@ public sealed record LayoutSettings
     public double TabBarSpacing { get; init; }
     /// <summary>The layout of every workspace the user hasn't switched by hand.</summary>
     public LayoutMode DefaultLayout { get; init; }
+    /// <summary>How many columns tiled workspaces without their own count use, 2 or 3; null picks by the screen's shape.</summary>
+    public int? DefaultTiledColumns { get; init; }
 
     public static LayoutSettings Standard { get; } = new();
 }
@@ -90,11 +94,40 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     public LayoutMode? LayoutOverride { get; set; }
     public LayoutMode Layout => LayoutOverride ?? Settings.DefaultLayout;
 
-    /// <summary>Switches between scrolling and tiled, for this workspace only.</summary>
+    /// <summary>This workspace's own tiled column count (2 or 3), once the user has switched it; null follows the default.</summary>
+    public int? TiledColumnsOverride { get; set; }
+    /// <summary>How many columns this workspace tiles into: its own count, else the default, else 3 on an ultrawide screen and 2 elsewhere.</summary>
+    public int TiledColumns => TiledLayout.ClampColumns(TiledColumnsOverride ?? Settings.DefaultTiledColumns ?? TiledLayout.AutoColumns(Viewport));
+
+    /// <summary>
+    /// What the first part of each split gets, by split (see <see cref="TiledLayout"/>); 0 keeps a split's default.
+    /// Only used while it has one entry per split, so it starts over when windows come or go.
+    /// </summary>
+    public IReadOnlyList<double>? TiledRatios { get; set; }
+
+    /// <summary>The window whose tile fills the screen (tiled "full width"); only counts while that tile has focus.</summary>
+    public WindowId? ZoomedWindow { get; private set; }
+
+    /// <summary>
+    /// Switches between scrolling and tiled, for this workspace only. Going tiled gives every
+    /// window of a stack its own column; going back to scrolling gives every column the default width.
+    /// </summary>
     public void ToggleLayout()
     {
         LayoutOverride = Layout == LayoutMode.Scrolling ? LayoutMode.Tiled : LayoutMode.Scrolling;
+        if (Layout == LayoutMode.Scrolling)
+        {
+            Strip.ResetWidths(Settings.DefaultWidthIndex);
+            ZoomedWindow = null;
+        }
         SettleScroll();
+    }
+
+    /// <summary>Switches this workspace between 2 and 3 tiled columns, starting its splits over.</summary>
+    public void CycleTiledColumns()
+    {
+        TiledColumnsOverride = TiledColumns == TiledLayout.MinColumns ? TiledLayout.MaxColumns : TiledLayout.MinColumns;
+        TiledRatios = null;
     }
 
     // Geometry
@@ -107,74 +140,23 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     /// </summary>
     public Point HiddenOrigin => new(Viewport.MaxX - 1, Viewport.MaxY - 1);
 
-    public double Width(int columnIndex) => Layout == LayoutMode.Tiled ? Widths()[columnIndex] : ScrollingWidth(columnIndex);
+    public double Width(int columnIndex) => ScrollingWidth(columnIndex);
 
     /// <summary>A column's width on the strip: its preset or custom width, at least as wide as its windows allow.</summary>
     private double ScrollingWidth(int columnIndex)
     {
         var column = Strip.Columns[columnIndex];
-        var preset = column.IsFullWidth ? PresetWidth(1) : Weight(column);
-        return Math.Min(Math.Max(preset, MinimumWidth(column)), UsableWidth);
-    }
-
-    /// <summary>What a column asks for: its custom width, else its preset's width. Tiled columns share the screen in this proportion.</summary>
-    private double Weight(Column column)
-    {
         var presets = Settings.WidthPresets;
-        return column.CustomWidth is { } custom ? Rounding.Round(custom) : PresetWidth(presets[Math.Clamp(column.WidthIndex, 0, presets.Count - 1)]);
+        var preset = column.IsFullWidth ? PresetWidth(1)
+            : column.CustomWidth is { } custom ? Rounding.Round(custom)
+            : PresetWidth(presets[Math.Clamp(column.WidthIndex, 0, presets.Count - 1)]);
+        return Math.Min(Math.Max(preset, MinimumWidth(column)), UsableWidth);
     }
 
     private double MinimumWidth(Column column) => column.Windows.Select(w => MinimumWidths.GetValueOrDefault(w)).DefaultIfEmpty(0).Max();
 
-    /// <summary>Every column's width, worked out once. Tiled columns split what's left after full-width ones.</summary>
-    private List<double> Widths()
-    {
-        var columns = Strip.Columns;
-        if (Layout == LayoutMode.Scrolling) return [.. Enumerable.Range(0, columns.Count).Select(ScrollingWidth)];
-
-        var widths = new double[columns.Count];
-        var shared = new List<int>();
-        for (var index = 0; index < columns.Count; index++)
-        {
-            if (columns[index].IsFullWidth) widths[index] = ScrollingWidth(index);
-            else shared.Add(index);
-        }
-        if (shared.Count == 0) return [.. widths];
-
-        // Columns split the room in proportion to their weights, but never below a window's minimum:
-        // those keep their minimum and the rest share what remains.
-        var room = UsableWidth - Settings.Gap * (shared.Count - 1);
-        var weights = shared.ToDictionary(i => i, i => Math.Max(Weight(columns[i]), 1));
-        var pinned = new HashSet<int>();
-        var changed = true;
-        while (changed)
-        {
-            changed = false;
-            var open = shared.Where(i => !pinned.Contains(i)).ToList();
-            var left = room - pinned.Sum(i => MinimumWidth(columns[i]));
-            var total = open.Sum(i => weights[i]);
-            foreach (var i in open)
-            {
-                if (MinimumWidth(columns[i]) <= left * weights[i] / total) continue;
-                pinned.Add(i);
-                changed = true;
-                break;
-            }
-        }
-        var remaining = room - pinned.Sum(i => MinimumWidth(columns[i]));
-        var sharing = shared.Where(i => !pinned.Contains(i)).ToList();
-        var weightTotal = sharing.Sum(i => weights[i]);
-        foreach (var i in shared)
-            widths[i] = pinned.Contains(i) ? MinimumWidth(columns[i]) : Rounding.Round(remaining * weights[i] / weightTotal);
-        // Rounding leaves a pixel or two over or short; the last shared column takes it so they fill the screen exactly.
-        if (sharing.Count > 0)
-        {
-            var last = sharing[^1];
-            widths[last] = Math.Max(widths[last] + room - shared.Sum(i => widths[i]), 1);
-        }
-        for (var i = 0; i < widths.Length; i++) widths[i] = Math.Min(widths[i], UsableWidth);
-        return [.. widths];
-    }
+    /// <summary>Every column's width on the strip, worked out once.</summary>
+    private List<double> Widths() => [.. Enumerable.Range(0, Strip.Columns.Count).Select(ScrollingWidth)];
 
     /// <summary>Preset fractions are of the whole viewport, so two ½ columns exactly fill it, gaps included.</summary>
     public double PresetWidth(double fraction) => Rounding.Round((Viewport.Width - Settings.Gap) * fraction - Settings.Gap);
@@ -206,9 +188,26 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
 
     // Scrolling
 
+    /// <summary>
+    /// Tiled workspaces don't scroll: everything is on screen. They keep one tile per column
+    /// instead (a window dropped onto another's column becomes the next tile) and forget a zoom
+    /// whose window has gone.
+    /// </summary>
+    private void KeepTiledShape()
+    {
+        Strip.ExplodeStacks();
+        ScrollOffset = 0;
+        if (ZoomedWindow is { } zoomed && !Strip.Contains(zoomed)) ZoomedWindow = null;
+    }
+
     /// <summary>Scrolls as little as possible to bring the focused column fully on screen.</summary>
     public void EnsureFocusedVisible()
     {
+        if (Layout == LayoutMode.Tiled)
+        {
+            KeepTiledShape();
+            return;
+        }
         if (Strip.IsEmpty)
         {
             ScrollOffset = 0;
@@ -226,7 +225,7 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
 
     public void CenterFocusedColumn()
     {
-        if (Strip.IsEmpty) return;
+        if (Strip.IsEmpty || Layout == LayoutMode.Tiled) return;
         var index = Strip.FocusedColumnIndex;
         var widths = Widths();
         ScrollOffset = Rounding.Round(Offsets(widths)[index] + widths[index] / 2 - UsableWidth / 2);
@@ -238,6 +237,11 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     /// </summary>
     public void SettleScroll()
     {
+        if (Layout == LayoutMode.Tiled)
+        {
+            KeepTiledShape();
+            return;
+        }
         var maximum = Math.Max(ContentWidth - UsableWidth, 0);
         ScrollOffset = Math.Clamp(ScrollOffset, 0, maximum);
         EnsureFocusedVisible();
@@ -246,7 +250,7 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     // Gesture scrolling
 
     /// <summary>The scroll range that shows no empty space past the strip's ends.</summary>
-    public (double Lower, double Upper) ScrollBounds => (0, Math.Max(ContentWidth - UsableWidth, 0));
+    public (double Lower, double Upper) ScrollBounds => (0, Layout == LayoutMode.Tiled ? 0 : Math.Max(ContentWidth - UsableWidth, 0));
 
     /// <summary>
     /// Moves the strip with the fingers. Past either end it follows at a third of the speed, up to
@@ -254,6 +258,7 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     /// </summary>
     public void Scroll(double delta)
     {
+        if (Layout == LayoutMode.Tiled) return;
         var (lower, upper) = ScrollBounds;
         var limit = UsableWidth / 4;
         var outside = ScrollOffset < lower || ScrollOffset > upper || ScrollOffset + delta < lower || ScrollOffset + delta > upper;
@@ -286,7 +291,7 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     /// </summary>
     public bool SettleSwipe(double projectedOffset)
     {
-        if (Strip.IsEmpty)
+        if (Strip.IsEmpty || Layout == LayoutMode.Tiled)
         {
             ScrollOffset = 0;
             return false;
@@ -312,6 +317,12 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     /// <summary>Applies a layout action. Returns false if it changed nothing or is not a layout action.</summary>
     public bool Perform(GlideAction action)
     {
+        if (action == GlideAction.CycleTiledColumns)
+        {
+            CycleTiledColumns();
+            return true;
+        }
+        if (Layout == LayoutMode.Tiled && PerformTiled(action) is { } tiledChanged) return tiledChanged;
         bool changed;
         switch (action)
         {
@@ -344,7 +355,7 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
         }
         if (changed)
         {
-            // Tiled columns fit on screen, so the strip goes back to the start when a zoomed column returns to its share.
+            // Tiled keeps one tile per column, so a tab toggle can add or remove tiles; a stack's expelled window may close a gap.
             if (action is GlideAction.ConsumeOrExpelLeft or GlideAction.ConsumeOrExpelRight || Layout == LayoutMode.Tiled)
                 SettleScroll();
             else
@@ -369,26 +380,204 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     }
 
     /// <summary>
-    /// Gives the column holding <paramref name="window"/> the width the user just dragged it to. On
-    /// the strip that is its width; tiled, the width is a share of the screen, so it becomes the
-    /// weight that lands the column near <paramref name="width"/> with the other columns' weights
-    /// unchanged. Returns false if the window isn't here.
+    /// Adopts the width the user just dragged <paramref name="window"/> to. On the strip that is its
+    /// column's width. Tiled, it moves the nearest column split that decides the tile's width, so
+    /// the layout stays a spiral; a tile whose width no split decides (it is alone) snaps back.
+    /// Returns false if nothing changed.
     /// </summary>
     public bool SetColumnWidthFromResize(WindowId window, double width)
     {
-        if (Layout == LayoutMode.Scrolling || Strip.Location(window) is not (int index, _))
-            return Strip.SetCustomWidth(width, window);
-        var others = Strip.Columns.Where((c, i) => i != index && !c.IsFullWidth).Select(Weight).ToList();
-        if (others.Count == 0) return Strip.SetCustomWidth(width, window);
-        // With W the wanted width, w / (w + others) = W / room, so w = W × others / (room - W).
-        var room = UsableWidth - Settings.Gap * others.Count;
-        var wanted = Math.Clamp(width, room * 0.1, room * 0.9);
-        return Strip.SetCustomWidth(wanted * others.Sum() / (room - wanted), window);
+        if (Layout == LayoutMode.Scrolling) return Strip.SetCustomWidth(width, window);
+        var tiles = Tiles();
+        var index = tiles.FindIndex(t => TileWindows(t).Contains(window));
+        if (index < 0 || ZoomedWindow is not null) return false;
+        var count = tiles.Count;
+        var splits = TiledLayout.Splits(Viewport, count, TiledColumns, Settings.Gap, EffectiveRatios(count));
+        // The split that sizes the tile across: its own if that one is side by side (the tile is its first part), else the nearest earlier one (it is in the second part).
+        int split;
+        bool first;
+        if (index < count - 1 && splits[index].SideBySide)
+            (split, first) = (index, true);
+        else if (Enumerable.Range(0, Math.Min(index, count - 1)).Reverse().Where(j => splits[j].SideBySide).Cast<int?>().FirstOrDefault() is int earlier)
+            (split, first) = (earlier, false);
+        else
+            return false;
+        var available = splits[split].Room.Width - Settings.Gap;
+        if (available <= 0) return false;
+        var share = Math.Clamp(width / available, 0.1, 0.9);
+        return SetTiledRatio(split, count, first ? share : 1 - share);
     }
+
+    // Tiled
+
+    /// <summary>A tile: a column's one window, or a whole tabbed column (<see cref="Row"/> is then null).</summary>
+    private readonly record struct Tile(int Column, int? Row);
+
+    /// <summary>The tiles in order: columns left to right, a stack's windows top to bottom.</summary>
+    private List<Tile> Tiles()
+    {
+        var tiles = new List<Tile>();
+        for (var index = 0; index < Strip.Columns.Count; index++)
+        {
+            var column = Strip.Columns[index];
+            if (column.IsTabbed)
+                tiles.Add(new Tile(index, null));
+            else
+                tiles.AddRange(Enumerable.Range(0, column.Windows.Count).Select(row => new Tile(index, row)));
+        }
+        return tiles;
+    }
+
+    private IReadOnlyList<WindowId> TileWindows(Tile tile) =>
+        tile.Row is int row ? [Strip.Columns[tile.Column].Windows[row]] : Strip.Columns[tile.Column].Windows;
+
+    /// <summary>The splits' ratios, if they were set for this many tiles.</summary>
+    private IReadOnlyList<double>? EffectiveRatios(int count) => TiledRatios is { } ratios && ratios.Count == count - 1 ? ratios : null;
+
+    /// <summary>The tile holding the zoomed window, while it has focus.</summary>
+    private int? ZoomedTile(IReadOnlyList<Tile> tiles)
+    {
+        if (ZoomedWindow is not { } zoomed || Strip.FocusedColumn is not { } focused || !focused.Windows.Contains(zoomed)) return null;
+        var index = tiles.ToList().FindIndex(t => t.Column == Strip.FocusedColumnIndex && (t.Row is null || focused.Windows[t.Row.Value] == zoomed));
+        return index < 0 ? null : index;
+    }
+
+    /// <summary>
+    /// Every tile's frame as the spiral lays it out, before minimum widths and zoom: what focus
+    /// and move go by, and what the ratios shape.
+    /// </summary>
+    private List<Rect> TileFrames(IReadOnlyList<Tile> tiles) =>
+        [.. TiledLayout.Frames(Viewport, tiles.Count, TiledColumns, Settings.Gap, EffectiveRatios(tiles.Count))];
+
+    /// <summary>
+    /// The frames tiles are sent to: a tile narrower than a window in it allows gets that window's
+    /// minimum width within its own x, overlapping its neighbour if it must; a zoomed tile fills the screen.
+    /// </summary>
+    private List<Rect> PlacedFrames(IReadOnlyList<Tile> tiles)
+    {
+        var frames = TileFrames(tiles);
+        var right = Viewport.MaxX - Settings.Gap;
+        for (var index = 0; index < frames.Count; index++)
+        {
+            var minimum = TileWindows(tiles[index]).Select(w => MinimumWidths.GetValueOrDefault(w)).DefaultIfEmpty(0).Max();
+            if (frames[index].Width >= minimum) continue;
+            var width = Math.Min(minimum, UsableWidth);
+            frames[index] = frames[index] with { X = Math.Min(frames[index].X, Math.Max(right - width, Viewport.MinX + Settings.Gap)), Width = width };
+        }
+        if (ZoomedTile(tiles) is int zoomed)
+            frames[zoomed] = new Rect(Viewport.MinX + Settings.Gap, Viewport.MinY + Settings.Gap, UsableWidth, Math.Max(Viewport.Height - 2 * Settings.Gap, 0));
+        return frames;
+    }
+
+    /// <summary>Focus, move, width and zoom in a tiled workspace. Null for actions that work as they do on the strip.</summary>
+    private bool? PerformTiled(GlideAction action)
+    {
+        KeepTiledShape();
+        if (Strip.IsEmpty) return action is GlideAction.ToggleLayout or GlideAction.ToggleTabbed or GlideAction.CenterColumn ? null : false;
+        var changed = PerformTiledAction(action);
+        // A zoom ends when focus leaves its tile.
+        if (ZoomedWindow is { } zoomed && Strip.FocusedColumn?.Windows.Contains(zoomed) != true) ZoomedWindow = null;
+        return changed;
+    }
+
+    private bool? PerformTiledAction(GlideAction action)
+    {
+        switch (action)
+        {
+            case GlideAction.FocusColumnLeft: return FocusTile(TileSide.Left);
+            case GlideAction.FocusColumnRight: return FocusTile(TileSide.Right);
+            case GlideAction.FocusWindowUp: return FocusTile(TileSide.Up);
+            case GlideAction.FocusWindowDown: return FocusTile(TileSide.Down);
+            case GlideAction.MoveColumnLeft: return MoveTile(TileSide.Left);
+            case GlideAction.MoveColumnRight: return MoveTile(TileSide.Right);
+            case GlideAction.MoveWindowUp: return MoveTile(TileSide.Up);
+            case GlideAction.MoveWindowDown: return MoveTile(TileSide.Down);
+            case GlideAction.FocusFirstColumn: return Strip.FocusFirstColumn();
+            case GlideAction.FocusLastColumn: return Strip.FocusLastColumn();
+            // Tiles are windows, never stacks: there is nothing to consume or expel.
+            case GlideAction.ConsumeOrExpelLeft or GlideAction.ConsumeOrExpelRight: return false;
+            case GlideAction.CycleColumnWidth: return CycleTiledRatio(forward: true);
+            case GlideAction.CycleColumnWidthBackward: return CycleTiledRatio(forward: false);
+            case GlideAction.ToggleFullWidth:
+                ZoomedWindow = ZoomedTile(Tiles()) is null ? Strip.FocusedWindow : null;
+                return true;
+            default: return null;
+        }
+    }
+
+    /// <summary>Moves focus to the tile next to the focused one on a side.</summary>
+    private bool FocusTile(TileSide side) =>
+        TiledLayout.Neighbour(TileFrames(Tiles()), Strip.FocusedColumnIndex, side) is int target && Strip.FocusColumnAt(target);
+
+    /// <summary>Swaps the focused tile with the one next to it on a side; focus goes with the window.</summary>
+    private bool MoveTile(TileSide side) =>
+        TiledLayout.Neighbour(TileFrames(Tiles()), Strip.FocusedColumnIndex, side) is int target && Strip.SwapColumns(Strip.FocusedColumnIndex, target);
+
+    /// <summary>
+    /// Steps the split that cuts the focused tile off from the tiles after it through 1/3, 1/2 and
+    /// 2/3 of its room, for the tile's share of it. The last tile has no split of its own and
+    /// changes the one before it.
+    /// </summary>
+    private bool CycleTiledRatio(bool forward)
+    {
+        var count = Strip.Columns.Count;
+        if (count < 2) return false;
+        var index = Strip.FocusedColumnIndex;
+        var split = Math.Min(index, count - 2);
+        var ratios = EffectiveRatios(count);
+        var current = TiledLayout.Ratio(split, count, TiledColumns, ratios);
+        var share = index == count - 1 ? 1 - current : current;
+        var presets = TiledLayout.RatioPresets;
+        const double tolerance = 0.01;
+        var next = forward ? presets.Where(p => p > share + tolerance).DefaultIfEmpty(presets[0]).First()
+                           : presets.Where(p => p < share - tolerance).DefaultIfEmpty(presets[^1]).Last();
+        return SetTiledRatio(split, count, index == count - 1 ? 1 - next : next);
+    }
+
+    /// <summary>Sets one split's ratio, keeping the others as they are. Returns false if it already was that.</summary>
+    private bool SetTiledRatio(int split, int count, double ratio)
+    {
+        var current = EffectiveRatios(count);
+        var updated = Enumerable.Range(0, count - 1).Select(k => TiledLayout.IsSet(k, current) ? current![k] : 0).ToList();
+        if (Math.Abs(updated[split] - ratio) < 0.001) return false;
+        updated[split] = ratio;
+        TiledRatios = updated;
+        return true;
+    }
+
+    /// <summary>Where a window dropped at screen x lands among the tiles: after those whose middle is left of it.</summary>
+    public int TileDropIndex(double x) => TileFrames(Tiles()).Count(f => f.MidX < x);
 
     // Placement
 
-    public IReadOnlyList<WindowPlacement> Placements()
+    public IReadOnlyList<WindowPlacement> Placements() => Layout == LayoutMode.Tiled ? TiledPlacements() : ScrollingPlacements();
+
+    private List<WindowPlacement> TiledPlacements()
+    {
+        var tiles = Tiles();
+        var frames = PlacedFrames(tiles);
+        var result = new List<WindowPlacement>();
+        for (var index = 0; index < tiles.Count; index++)
+        {
+            var column = Strip.Columns[tiles[index].Column];
+            if (!column.IsTabbed)
+            {
+                result.Add(new WindowPlacement(column.Windows[tiles[index].Row!.Value], frames[index], Visibility.Visible));
+                continue;
+            }
+            var reserved = Settings.TabBarHeight + Settings.TabBarSpacing;
+            var shown = new Rect(frames[index].X, frames[index].Y + reserved, frames[index].Width, Math.Max(frames[index].Height - reserved, 0));
+            for (var row = 0; row < column.Windows.Count; row++)
+            {
+                result.Add(row == column.FocusedRow
+                    ? new WindowPlacement(column.Windows[row], shown, Visibility.Visible)
+                    : new WindowPlacement(column.Windows[row], new Rect(HiddenOrigin, shown.Size), Visibility.HiddenTab));
+            }
+        }
+        return result;
+    }
+
+    private List<WindowPlacement> ScrollingPlacements()
     {
         var gap = Settings.Gap;
         var columnHeight = Math.Max(Viewport.Height - 2 * gap, 0);
@@ -432,6 +621,19 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     public IReadOnlyList<TabBarPlacement> TabBars()
     {
         var result = new List<TabBarPlacement>();
+        if (Layout == LayoutMode.Tiled)
+        {
+            var tiles = Tiles();
+            var frames = PlacedFrames(tiles);
+            for (var index = 0; index < tiles.Count; index++)
+            {
+                var column = Strip.Columns[tiles[index].Column];
+                if (!column.IsTabbed) continue;
+                var frame = new Rect(frames[index].X, frames[index].Y, frames[index].Width, Settings.TabBarHeight);
+                result.Add(new TabBarPlacement(tiles[index].Column, frame, [.. column.Windows], column.FocusedRow));
+            }
+            return result;
+        }
         var widths = Widths();
         var offsets = Offsets(widths);
         for (var index = 0; index < Strip.Columns.Count; index++)
@@ -469,6 +671,9 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     /// </summary>
     public Rect InsertionFrame(int index, double thickness)
     {
+        // Tiled, a dropped window takes a tile's place and pushes the rest on: show that tile.
+        if (Layout == LayoutMode.Tiled && Tiles() is { Count: > 0 } tiles)
+            return TileFrames(tiles)[Math.Clamp(index, 0, tiles.Count - 1)];
         var offsets = ColumnOffsets();
         var edge = index < offsets.Count ? offsets[index] : Strip.IsEmpty ? 0 : ContentWidth + Settings.Gap;
         var x = Viewport.MinX + Settings.Gap + edge - ScrollOffset - Settings.Gap / 2;

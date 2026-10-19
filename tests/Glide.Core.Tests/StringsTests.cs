@@ -93,14 +93,14 @@ public partial class StringsTests
         try
         {
             Strings.UseLanguage("es");
-            Assert.Equal("Mover columna al escritorio 3", GlideAction.MoveColumnToWorkspace3.Title());
+            Assert.Equal("Mover ventana al escritorio 3", GlideAction.MoveColumnToWorkspace3.Title());
             Assert.Equal("Escritorios", ActionGroup.Workspaces.Title());
         }
         finally
         {
             Strings.UseLanguage("en");
         }
-        Assert.Equal("Move Column to Workspace 3", GlideAction.MoveColumnToWorkspace3.Title());
+        Assert.Equal("Move Window to Workspace 3", GlideAction.MoveColumnToWorkspace3.Title());
     }
 
     [Fact]
