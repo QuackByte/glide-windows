@@ -27,13 +27,20 @@ public sealed class StripSnapshot : IEquatable<StripSnapshot>
     }
 
     public sealed record WorkspaceState(IReadOnlyList<ColumnState> Columns, WindowId? FocusedWindow,
-                                        /* Optional so snapshots saved before the tiled layout existed still load; null follows the default. */ LayoutMode? Layout = null)
+                                        /* Optional so snapshots saved before the tiled layout existed still load; null follows the default. */ LayoutMode? Layout = null,
+                                        /* Likewise for the tiled layout's own column count and split ratios. */ int? TiledColumns = null,
+                                        IReadOnlyList<double>? TiledRatios = null)
     {
-        public static WorkspaceState From(Strip strip, LayoutMode? layout = null) =>
-            new([.. strip.Columns.Select(ColumnState.From)], strip.FocusedWindow, layout);
+        public static WorkspaceState From(Strip strip, LayoutMode? layout = null, int? tiledColumns = null, IReadOnlyList<double>? tiledRatios = null) =>
+            new([.. strip.Columns.Select(ColumnState.From)], strip.FocusedWindow, layout, tiledColumns, tiledRatios is { Count: > 0 } ? [.. tiledRatios] : null);
+
+        public static WorkspaceState From(Workspace workspace) =>
+            From(workspace.Strip, workspace.LayoutOverride, workspace.TiledColumnsOverride, workspace.TiledRatios);
 
         public bool Equals(WorkspaceState? other) =>
-            other is not null && FocusedWindow == other.FocusedWindow && Layout == other.Layout && Columns.SequenceEqual(other.Columns);
+            other is not null && FocusedWindow == other.FocusedWindow && Layout == other.Layout && TiledColumns == other.TiledColumns
+            && (TiledRatios is null ? other.TiledRatios is null : other.TiledRatios is not null && TiledRatios.SequenceEqual(other.TiledRatios))
+            && Columns.SequenceEqual(other.Columns);
 
         public override int GetHashCode() => HashCode.Combine(Columns.Count, FocusedWindow);
     }
@@ -64,7 +71,7 @@ public sealed class StripSnapshot : IEquatable<StripSnapshot>
     public StripSnapshot(WorkspaceSet set, IEnumerable<WindowId> userFloating, IEnumerable<WindowId> userTiled, DateTimeOffset bootTime)
         : this(set.Active.Strip, userFloating, userTiled, bootTime)
     {
-        Workspaces = [.. set.Workspaces.Select(w => WorkspaceState.From(w.Strip, w.LayoutOverride))];
+        Workspaces = [.. set.Workspaces.Select(WorkspaceState.From)];
         ActiveWorkspace = set.ActiveIndex;
     }
 
@@ -83,6 +90,14 @@ public sealed class StripSnapshot : IEquatable<StripSnapshot>
     /// <summary>Each workspace's own layout, in order; null where it follows the default.</summary>
     [JsonIgnore]
     public IReadOnlyList<LayoutMode?> Layouts => [.. SavedWorkspaces.Select(w => w.Layout)];
+
+    /// <summary>Each workspace's own tiled column count, in order; null where it follows the default.</summary>
+    [JsonIgnore]
+    public IReadOnlyList<int?> TiledColumns => [.. SavedWorkspaces.Select(w => w.TiledColumns)];
+
+    /// <summary>Each workspace's tiled split ratios, in order; null where they are the defaults.</summary>
+    [JsonIgnore]
+    public IReadOnlyList<IReadOnlyList<double>?> TiledRatios => [.. SavedWorkspaces.Select(w => w.TiledRatios)];
 
     private IReadOnlyList<WorkspaceState> SavedWorkspaces => Workspaces ?? [new WorkspaceState(Columns, FocusedWindow)];
 

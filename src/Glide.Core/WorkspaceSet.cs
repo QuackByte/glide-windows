@@ -167,13 +167,19 @@ public sealed class WorkspaceSet
         return target;
     }
 
-    /// <summary>Rebuilds the set from saved strips and their layouts (none: all follow the default), e.g. after a relaunch.</summary>
-    public void Restore(IReadOnlyList<Strip> strips, int activeIndex, IReadOnlyList<LayoutMode?>? layouts = null)
+    /// <summary>
+    /// Rebuilds the set from saved strips and their layouts, tiled column counts and split ratios
+    /// (none: all follow the default), e.g. after a relaunch.
+    /// </summary>
+    public void Restore(IReadOnlyList<Strip> strips, int activeIndex, IReadOnlyList<LayoutMode?>? layouts = null,
+                        IReadOnlyList<int?>? tiledColumns = null, IReadOnlyList<IReadOnlyList<double>?>? tiledRatios = null)
     {
         for (var index = 0; index < Count; index++)
         {
             workspaces[index].Strip = index < strips.Count ? strips[index] : new Strip();
             workspaces[index].LayoutOverride = layouts is not null && index < layouts.Count ? layouts[index] : null;
+            workspaces[index].TiledColumnsOverride = tiledColumns is not null && index < tiledColumns.Count ? tiledColumns[index] : null;
+            workspaces[index].TiledRatios = tiledRatios is not null && index < tiledRatios.Count ? tiledRatios[index] : null;
             workspaces[index].SettleScroll();
         }
         ActiveIndex = IsValid(activeIndex) ? activeIndex : 0;

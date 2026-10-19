@@ -184,7 +184,7 @@ public class WorkspaceSetTests
         Assert.Equal(true, GlideAction.MoveColumnToWorkspace9.WorkspaceCommand()?.MovesWindow);
         Assert.Equal(new WorkspaceTarget.Next(), GlideAction.FocusNextWorkspace.WorkspaceCommand()?.Target);
         Assert.Null(GlideAction.FocusColumnLeft.WorkspaceCommand());
-        Assert.Equal(23, GlideActions.All.Count(a => a.Group() == ActionGroup.Workspaces));
+        Assert.Equal(24, GlideActions.All.Count(a => a.Group() == ActionGroup.Workspaces));
         Assert.Equal(new KeyCombo('1', KeyModifiers.Win), Keymap.Defaults[GlideAction.FocusWorkspace1]);
         Assert.Equal(new KeyCombo('9', KeyModifiers.Win | KeyModifiers.Shift), Keymap.Defaults[GlideAction.MoveColumnToWorkspace9]);
         Assert.Equal(Keymap.Defaults.Count, Keymap.Defaults.Values.Distinct().Count()); // No two actions share a default

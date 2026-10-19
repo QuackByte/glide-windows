@@ -24,6 +24,7 @@ public static class MonitorGeometry
     /// <summary>The column index a window dropped at screen x lands at: before the first column whose middle is right of it.</summary>
     public static int DropIndex(Workspace workspace, double x)
     {
+        if (workspace.Layout == LayoutMode.Tiled) return workspace.TileDropIndex(x);
         var offsets = workspace.ColumnOffsets();
         var stripX = x - workspace.Viewport.MinX - workspace.Settings.Gap + workspace.ScrollOffset;
         return Enumerable.Range(0, workspace.Strip.Columns.Count).Count(i => offsets[i] + workspace.Width(i) / 2 < stripX);

@@ -251,6 +251,57 @@ public sealed class Strip : IEquatable<Strip>
         return true;
     }
 
+    /// <summary>Swaps two columns' places, with focus following the focused column to its new one.</summary>
+    public bool SwapColumns(int first, int second)
+    {
+        if (first == second || first < 0 || second < 0 || first >= columns.Count || second >= columns.Count) return false;
+        (columns[first], columns[second]) = (columns[second], columns[first]);
+        if (FocusedColumnIndex == first) FocusedColumnIndex = second;
+        else if (FocusedColumnIndex == second) FocusedColumnIndex = first;
+        return true;
+    }
+
+    /// <summary>Focuses a column by index, keeping the row it last had. Returns false if it already had focus.</summary>
+    public bool FocusColumnAt(int index)
+    {
+        if (index < 0 || index >= columns.Count || index == FocusedColumnIndex) return false;
+        FocusedColumnIndex = index;
+        return true;
+    }
+
+    /// <summary>
+    /// Turns every stacked (not tabbed) column into one column per window, top to bottom, each with
+    /// the column's width. Tabbed columns stay whole. Focus stays on the same window. Returns true if anything changed.
+    /// </summary>
+    public bool ExplodeStacks()
+    {
+        if (!columns.Any(c => !c.IsTabbed && c.windowList.Count > 1)) return false;
+        var focused = FocusedWindow;
+        var exploded = new List<Column>();
+        foreach (var column in columns)
+        {
+            if (column.IsTabbed || column.windowList.Count == 1)
+                exploded.Add(column);
+            else
+                exploded.AddRange(column.windowList.Select(w => new Column([w], widthIndex: column.WidthIndex, isFullWidth: column.IsFullWidth, customWidth: column.CustomWidth)));
+        }
+        columns.Clear();
+        columns.AddRange(exploded);
+        if (focused is { } window && Location(window) is (int index, _)) FocusedColumnIndex = index;
+        return true;
+    }
+
+    /// <summary>Gives every column the preset <paramref name="widthIndex"/>, dropping custom and full widths.</summary>
+    public void ResetWidths(int widthIndex)
+    {
+        foreach (var column in columns)
+        {
+            column.WidthIndex = widthIndex;
+            column.IsFullWidth = false;
+            column.CustomWidth = null;
+        }
+    }
+
     // Width
 
     public bool CycleWidth(int presetCount, bool forward = true)

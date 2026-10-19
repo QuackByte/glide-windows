@@ -123,8 +123,17 @@ public sealed partial class SettingsWindow : Window
             Apply();
         };
         Card(T("Layout"),
-            T("Scrolling keeps columns at set widths on a strip you scroll along; tiled fits every column on screen. New and untouched workspaces use this. {0} switches the current workspace.",
+            T("Scrolling keeps columns on a strip you scroll along; tiled fits every window on screen, splitting the space in a spiral. New and untouched workspaces use this. {0} switches the current workspace.",
               settings.Keymap.Combo(GlideAction.ToggleLayout) is { } switchLayout ? KeyLabels.Describe(switchLayout) : T("A shortcut")), layout);
+        var tiledColumns = Choice([T("Automatic"), "2", "3"], settings.DefaultTiledColumns is int columnCount ? columnCount - 1 : 0, 220);
+        tiledColumns.SelectionChanged += (_, _) =>
+        {
+            settings.TiledColumns = tiledColumns.SelectedIndex switch { 1 => "2", 2 => "3", _ => "auto" };
+            Apply();
+        };
+        Card(T("Tiled columns"),
+            T("How many columns a tiled workspace uses before splitting the last one. Automatic uses 3 on ultrawide monitors. {0} switches the current workspace.",
+              settings.Keymap.Combo(GlideAction.CycleTiledColumns) is { } switchColumns ? KeyLabels.Describe(switchColumns) : T("A shortcut")), tiledColumns);
         Card(T("Start Glide when I sign in"),
             StartupEntry.StartsElevated ? T("Starts as administrator.") : host.IsElevated ? T("Starts as administrator, like now.") : null,
             Toggle(StartupEntry.IsEnabled, on =>

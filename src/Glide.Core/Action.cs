@@ -53,6 +53,7 @@ public enum GlideAction
     MoveColumnToMonitorRight,
     ShowShortcuts,
     ToggleLayout,
+    CycleTiledColumns,
 }
 
 public enum ActionGroup { Focus, Move, Columns, Workspaces, Monitors, General }
@@ -102,6 +103,7 @@ public static class GlideActions
         GlideAction.MoveColumnToMonitorRight => T("Move Column to Monitor Right"),
         GlideAction.ShowShortcuts => T("Show All Shortcuts"),
         GlideAction.ToggleLayout => T("Switch Between Scrolling and Tiled"),
+        GlideAction.CycleTiledColumns => T("Switch Between 2 and 3 Columns"),
         _ when action.WorkspaceCommand() is ({ } target, var moves) && target is WorkspaceTarget.Index(var index) =>
             moves ? T("Move Window to Workspace {0}", index + 1) : T("Focus Workspace {0}", index + 1),
         _ => action.ToString(),

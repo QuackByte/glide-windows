@@ -43,6 +43,7 @@ public static partial class Strings
         ["Move Column to Monitor Right"] = "Mover coluna para o monitor à direita",
         ["Show All Shortcuts"] = "Mostrar todos os atalhos",
         ["Switch Between Scrolling and Tiled"] = "Alternar entre rolagem e mosaico",
+        ["Switch Between 2 and 3 Columns"] = "Alternar entre 2 e 3 colunas",
         ["Move Window to Workspace {0}"] = "Mover janela ao espaço de trabalho {0}",
         ["Focus Workspace {0}"] = "Ir ao espaço de trabalho {0}",
         ["Focus Workspace 1…9"] = "Ir ao espaço de trabalho 1…9",
@@ -103,6 +104,8 @@ public static partial class Strings
 
         // On-screen workspace display
         ["Window sent to workspace {0}"] = "Janela enviada ao espaço de trabalho {0}",
+        ["{0} columns"] = "{0} colunas",
+        ["{0} columns when tiled"] = "{0} colunas no mosaico",
         ["Workspace {0} is empty"] = "O espaço de trabalho {0} está vazio",
         ["Workspace {0}"] = "Espaço de trabalho {0}",
 
@@ -136,7 +139,9 @@ public static partial class Strings
         ["Layout"] = "Layout",
         ["Scrolling"] = "Rolagem",
         ["Tiled"] = "Mosaico",
-        ["Scrolling keeps columns at set widths on a strip you scroll along; tiled fits every column on screen. New and untouched workspaces use this. {0} switches the current workspace."] = "Rolagem mantém as colunas com larguras fixas numa faixa pela qual você rola; mosaico faz caber todas as colunas na tela. Os espaços de trabalho novos e os que você não alterou usam esta opção. {0} alterna o espaço de trabalho atual.",
+        ["Scrolling keeps columns on a strip you scroll along; tiled fits every window on screen, splitting the space in a spiral. New and untouched workspaces use this. {0} switches the current workspace."] = "Rolagem mantém as colunas numa faixa pela qual você rola; mosaico faz caber todas as janelas na tela, dividindo o espaço em espiral. Os espaços de trabalho novos e os que você não alterou usam esta opção. {0} alterna o espaço de trabalho atual.",
+        ["Tiled columns"] = "Colunas do mosaico",
+        ["How many columns a tiled workspace uses before splitting the last one. Automatic uses 3 on ultrawide monitors. {0} switches the current workspace."] = "Quantas colunas um espaço de trabalho em mosaico usa antes de dividir a última. Automático usa 3 em monitores ultrawide. {0} alterna o espaço de trabalho atual.",
         ["A shortcut"] = "Um atalho",
         ["Start Glide when I sign in"] = "Abrir o Glide ao entrar",
         ["Starts as administrator."] = "Abre como administrador.",

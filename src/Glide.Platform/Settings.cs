@@ -28,6 +28,12 @@ public sealed class Settings
     public double Gap { get; set; } = 12;
     /// <summary>The layout of workspaces you haven't switched with Win+Ctrl+T: "Scrolling" or "Tiled".</summary>
     public LayoutMode DefaultLayout { get; set; } = LayoutMode.Scrolling;
+    /// <summary>How many columns tiled workspaces you haven't switched with Win+Ctrl+G use: "auto" (3 on ultrawide monitors, else 2), 2 or 3.</summary>
+    [JsonConverter(typeof(TiledColumnsConverter))]
+    public string TiledColumns { get; set; } = "auto";
+    /// <summary><see cref="TiledColumns"/> as a number; null for "auto" or anything unreadable.</summary>
+    [JsonIgnore]
+    public int? DefaultTiledColumns => TiledColumns?.Trim() switch { "2" => 2, "3" => 3, _ => null };
     /// <summary>Slide windows into place instead of jumping.</summary>
     public bool Animate { get; set; } = true;
     /// <summary>Colors the focused tiled window's border (Windows 11).</summary>
@@ -148,6 +154,19 @@ public sealed class Settings
         if (File.Exists(FilePath)) return;
         System.IO.Directory.CreateDirectory(Directory);
         File.WriteAllText(FilePath, JsonSerializer.Serialize(new Settings(), json));
+    }
+}
+
+/// <summary>Reads <c>"auto"</c>, <c>"2"</c> or <c>2</c>; writes a number when it is one.</summary>
+public sealed class TiledColumnsConverter : JsonConverter<string>
+{
+    public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+        reader.TokenType == JsonTokenType.Number ? reader.GetInt32().ToString() : reader.TokenType == JsonTokenType.String ? reader.GetString() ?? "auto" : "auto";
+
+    public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options)
+    {
+        if (int.TryParse(value, out var number)) writer.WriteNumberValue(number);
+        else writer.WriteStringValue(value);
     }
 }
 

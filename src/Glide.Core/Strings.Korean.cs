@@ -45,6 +45,7 @@ public static partial class Strings
         ["Move Column to Monitor Right"] = "열을 오른쪽 모니터로 이동",
         ["Show All Shortcuts"] = "모든 단축키 보기",
         ["Switch Between Scrolling and Tiled"] = "스크롤과 타일 전환",
+        ["Switch Between 2 and 3 Columns"] = "2열과 3열 전환",
         ["Move Window to Workspace {0}"] = "창을 워크스페이스 {0}(으)로 이동",
         ["Focus Workspace {0}"] = "워크스페이스 {0}(으)로 이동",
         ["Focus Workspace 1…9"] = "워크스페이스 1…9로 이동",
@@ -105,6 +106,8 @@ public static partial class Strings
 
         // On-screen workspace display
         ["Window sent to workspace {0}"] = "창을 워크스페이스 {0}(으)로 보냈습니다",
+        ["{0} columns"] = "{0}열",
+        ["{0} columns when tiled"] = "타일 시 {0}열",
         ["Workspace {0} is empty"] = "워크스페이스 {0}이(가) 비어 있습니다",
         ["Workspace {0}"] = "워크스페이스 {0}",
 
@@ -138,7 +141,9 @@ public static partial class Strings
         ["Layout"] = "레이아웃",
         ["Scrolling"] = "스크롤",
         ["Tiled"] = "타일",
-        ["Scrolling keeps columns at set widths on a strip you scroll along; tiled fits every column on screen. New and untouched workspaces use this. {0} switches the current workspace."] = "스크롤은 열을 정해진 너비로 두고 스크롤하는 스트립에 배치하고, 타일은 모든 열을 화면에 맞춥니다. 새 워크스페이스와 직접 바꾸지 않은 워크스페이스는 이 설정을 따릅니다. {0}(으)로 현재 워크스페이스를 전환합니다.",
+        ["Scrolling keeps columns on a strip you scroll along; tiled fits every window on screen, splitting the space in a spiral. New and untouched workspaces use this. {0} switches the current workspace."] = "스크롤은 열을 스크롤하는 스트립에 배치하고, 타일은 모든 창을 화면에 맞추며 공간을 나선형으로 나눕니다. 새 워크스페이스와 직접 바꾸지 않은 워크스페이스는 이 설정을 따릅니다. {0}(으)로 현재 워크스페이스를 전환합니다.",
+        ["Tiled columns"] = "타일 열 수",
+        ["How many columns a tiled workspace uses before splitting the last one. Automatic uses 3 on ultrawide monitors. {0} switches the current workspace."] = "타일 워크스페이스가 마지막 열을 나누기 전에 사용하는 열의 수입니다. 자동은 울트라와이드 모니터에서 3열을 사용합니다. {0}(으)로 현재 워크스페이스를 전환합니다.",
         ["A shortcut"] = "단축키",
         ["Start Glide when I sign in"] = "로그인할 때 Glide 시작",
         ["Starts as administrator."] = "관리자 권한으로 시작합니다.",

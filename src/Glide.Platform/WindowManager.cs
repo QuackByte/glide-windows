@@ -276,7 +276,7 @@ internal sealed class WindowManager : IDisposable
             var saved = snapshot.AllWindows.ToHashSet();
             var mine = adopted.Where(w => saved.Contains(w.Id)).Select(w => w.Id).ToList();
             var (strips, active) = snapshot.RestoreWorkspaces(mine, settings.DefaultWidthIndex(), display.Spaces.Settings.WidthPresets.Count);
-            display.Spaces.Restore(strips, active, snapshot.Layouts);
+            display.Spaces.Restore(strips, active, snapshot.Layouts, snapshot.TiledColumns, snapshot.TiledRatios);
         }
         // The rest (after a restart, or new since) go where their apps usually are, in the
         // remembered order; apps Glide doesn't know join the monitor they're on, left to right.
@@ -382,6 +382,13 @@ internal sealed class WindowManager : IDisposable
                 Layout();
                 FocusActive();
                 Announce(spaces.Active.Layout == LayoutMode.Tiled ? T("Tiled") : T("Scrolling"));
+                return;
+            case GlideAction.CycleTiledColumns:
+                spaces.Active.CycleTiledColumns();
+                Log.Info($"Workspace {spaces.ActiveIndex + 1} tiles in {spaces.Active.TiledColumns} columns ({spaces.Active.Layout})");
+                Layout();
+                FocusActive();
+                Announce(spaces.Active.Layout == LayoutMode.Tiled ? T("{0} columns", spaces.Active.TiledColumns) : T("{0} columns when tiled", spaces.Active.TiledColumns));
                 return;
             case GlideAction.FocusMonitorLeft or GlideAction.FocusMonitorRight:
                 FocusMonitor(action == GlideAction.FocusMonitorLeft ? -1 : 1);
@@ -1121,7 +1128,8 @@ internal sealed class WindowManager : IDisposable
             display.Spaces.Settings = new LayoutSettings(
                 gap: Math.Round(settings.Gap * scale), sliver: Math.Round(standard.Sliver * scale), widthPresets: standard.WidthPresets,
                 defaultWidthIndex: standard.DefaultWidthIndex, tabBarHeight: Math.Round(standard.TabBarHeight * scale),
-                tabBarSpacing: Math.Round(standard.TabBarSpacing * scale), defaultLayout: settings.DefaultLayout);
+                tabBarSpacing: Math.Round(standard.TabBarSpacing * scale), defaultLayout: settings.DefaultLayout,
+                defaultTiledColumns: settings.DefaultTiledColumns);
             display.Spaces.Viewport = monitor.WorkArea;
             return display;
         })];
