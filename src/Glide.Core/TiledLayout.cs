@@ -60,6 +60,56 @@ public static class TiledLayout
     public static IReadOnlyList<Rect> Frames(Rect viewport, int count, int columns, double gap, IReadOnlyList<double>? ratios = null) =>
         Walk(viewport, count, columns, gap, ratios).Frames;
 
+    /// <summary>
+    /// The split whose side-by-side room sets a tile's width: its own split if that is side by side (the tile is its
+    /// first part), else the nearest earlier side-by-side split (the tile is in its second part). Null for a lone tile.
+    /// </summary>
+    public static (int Split, bool First)? SizingSplit(int tile, int count, int columns)
+    {
+        columns = ClampColumns(columns);
+        if (tile < count - 1 && IsSideBySide(tile, columns)) return (tile, true);
+        for (var split = Math.Min(tile, count - 1) - 1; split >= 0; split--)
+            if (IsSideBySide(split, columns)) return (split, false);
+        return null;
+    }
+
+    /// <summary>
+    /// Ratios that give every tile at least its minimum width (<paramref name="minimums"/>, one per tile) by taking room
+    /// from its neighbours. Each split moves only as far as it must. Null when they can't all fit: a split would have to
+    /// leave a part under <see cref="MinimumShare"/> of its room, or the minimums are wider than the room.
+    /// </summary>
+    public static IReadOnlyList<double>? FitMinimums(Rect viewport, int count, int columns, double gap, IReadOnlyList<double>? ratios, IReadOnlyList<double> minimums)
+    {
+        columns = ClampColumns(columns);
+        // Splits left at 0 keep their default, which gives columns exactly equal widths.
+        var fitted = Enumerable.Range(0, Math.Max(count - 1, 0)).Select(split => IsSet(split, ratios) ? ratios![split] : 0.0).ToList();
+        for (var split = 0; split < count - 1; split++)
+        {
+            if (!IsSideBySide(split, columns)) continue;
+            // The tile this split sizes first, then the widest minimum among the tiles in its second part (they all share its rest).
+            double first = 0, rest = 0;
+            for (var tile = 0; tile < count; tile++)
+            {
+                if (SizingSplit(tile, count, columns) is not { } sizing || sizing.Split != split) continue;
+                if (sizing.First) first = Math.Ceiling(minimums[tile]);
+                else rest = Math.Max(rest, Math.Ceiling(minimums[tile]));
+            }
+            if (first == 0 && rest == 0) continue;
+            var available = Splits(viewport, count, columns, gap, fitted)[split].Room.Width - gap;
+            if (available <= 0) return null;
+            var firstWidth = Frames(viewport, count, columns, gap, fitted)[split].Width;
+            if (firstWidth >= first && available - firstWidth >= rest) continue;
+            var low = Math.Max(MinimumShare, first / available);
+            var high = Math.Min(1 - MinimumShare, 1 - rest / available);
+            if (low > high) return null;
+            fitted[split] = Math.Clamp(firstWidth / available, low, high);
+        }
+        return fitted;
+    }
+
+    /// <summary>The smallest share of its room a split may leave either part, when fitting minimums.</summary>
+    private const double MinimumShare = 0.1;
+
     private static (List<Rect> Frames, List<(Rect Room, bool SideBySide)> Splits) Walk(Rect viewport, int count, int columns, double gap, IReadOnlyList<double>? ratios)
     {
         var frames = new List<Rect>();

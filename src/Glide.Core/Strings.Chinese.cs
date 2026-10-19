@@ -109,6 +109,7 @@ public static partial class Strings
         ["{0} columns when tiled"] = "平铺时 {0} 列",
         ["Workspace {0} is empty"] = "工作区 {0} 为空",
         ["Workspace {0}"] = "工作区 {0}",
+        ["{0} has a minimum width of {1} px, so Glide can't make it narrower."] = "{0} 的最小宽度为 {1} px，因此 Glide 无法将其变窄。",
 
         // Overview and tab bars
         ["Type to filter windows"] = "输入文字以筛选窗口",

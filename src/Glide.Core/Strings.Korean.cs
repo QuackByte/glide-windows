@@ -110,6 +110,7 @@ public static partial class Strings
         ["{0} columns when tiled"] = "타일 시 {0}열",
         ["Workspace {0} is empty"] = "워크스페이스 {0}이(가) 비어 있습니다",
         ["Workspace {0}"] = "워크스페이스 {0}",
+        ["{0} has a minimum width of {1} px, so Glide can't make it narrower."] = "{0}의 최소 너비는 {1}px이라 Glide로는 더 좁힐 수 없습니다.",
 
         // Overview and tab bars
         ["Type to filter windows"] = "입력하여 창 필터링",

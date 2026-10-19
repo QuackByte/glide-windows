@@ -110,6 +110,7 @@ public static partial class Strings
         ["{0} columns when tiled"] = "{0} colonnes en mosaïque",
         ["Workspace {0} is empty"] = "Le bureau {0} est vide",
         ["Workspace {0}"] = "Bureau {0}",
+        ["{0} has a minimum width of {1} px, so Glide can't make it narrower."] = "{0} a une largeur minimale de {1} px : Glide ne peut pas rendre sa fenêtre plus étroite.",
 
         // Overview and tab bars
         ["Type to filter windows"] = "Saisissez pour filtrer les fenêtres",

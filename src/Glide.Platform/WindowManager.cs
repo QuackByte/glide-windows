@@ -397,7 +397,9 @@ internal sealed class WindowManager : IDisposable
                 MoveColumnToMonitor(action == GlideAction.MoveColumnToMonitorLeft ? -1 : 1);
                 return;
         }
-        if (!spaces.Active.Perform(action)) return;
+        var changed = spaces.Active.Perform(action);
+        AnnounceMinimumLimit(spaces.Active);
+        if (!changed) return;
         Layout();
         FocusActive();
     }
@@ -453,6 +455,14 @@ internal sealed class WindowManager : IDisposable
         Log.Info($"Workspace {index + 1} on {focused}: {spaces.Active.Strip}");
         StateChanged?.Invoke();
         Announce(spaces.Active.Strip.IsEmpty ? T("Workspace {0} is empty", index + 1) : T("Workspace {0}", index + 1));
+    }
+
+    /// <summary>Says why a width change stopped short, when an app's minimum width stopped it.</summary>
+    private void AnnounceMinimumLimit(Workspace workspace)
+    {
+        if (workspace.MinimumLimit is not { } window || !workspace.MinimumWidths.TryGetValue(window, out var minimum)) return;
+        var app = Native.AppDescription(Native.ProcessId(Native.Hwnd(window)));
+        Announce(T("{0} has a minimum width of {1} px, so Glide can't make it narrower.", app, (int)Math.Round(minimum)));
     }
 
     private void Announce(string message) =>
@@ -864,6 +874,7 @@ internal sealed class WindowManager : IDisposable
             if (strip.Location(id) is (int column, _))
             {
                 display.Spaces.Workspaces[workspace].SetColumnWidthFromResize(id, actual.Width);
+                AnnounceMinimumLimit(display.Spaces.Workspaces[workspace]);
                 foreach (var sibling in strip.Columns[column].Windows) placed.Remove(sibling);
                 display.Spaces.Workspaces[workspace].EnsureFocusedVisible();
                 Log.Debug($"Adopted width {actual.Width} for {Describe(id)}");
