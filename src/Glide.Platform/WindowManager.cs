@@ -276,7 +276,7 @@ internal sealed class WindowManager : IDisposable
             var saved = snapshot.AllWindows.ToHashSet();
             var mine = adopted.Where(w => saved.Contains(w.Id)).Select(w => w.Id).ToList();
             var (strips, active) = snapshot.RestoreWorkspaces(mine, settings.DefaultWidthIndex(), display.Spaces.Settings.WidthPresets.Count);
-            display.Spaces.Restore(strips, active);
+            display.Spaces.Restore(strips, active, snapshot.Layouts);
         }
         // The rest (after a restart, or new since) go where their apps usually are, in the
         // remembered order; apps Glide doesn't know join the monitor they're on, left to right.
@@ -375,6 +375,13 @@ internal sealed class WindowManager : IDisposable
                 ToggleFloating();
                 return;
             case GlideAction.ToggleOverview:
+                return;
+            case GlideAction.ToggleLayout:
+                spaces.Active.ToggleLayout();
+                Log.Info($"Workspace {spaces.ActiveIndex + 1} is now {spaces.Active.Layout}");
+                Layout();
+                FocusActive();
+                Announce(spaces.Active.Layout == LayoutMode.Tiled ? T("Tiled") : T("Scrolling"));
                 return;
             case GlideAction.FocusMonitorLeft or GlideAction.FocusMonitorRight:
                 FocusMonitor(action == GlideAction.FocusMonitorLeft ? -1 : 1);
@@ -849,7 +856,7 @@ internal sealed class WindowManager : IDisposable
             var strip = display.Spaces.Workspaces[workspace].Strip;
             if (strip.Location(id) is (int column, _))
             {
-                strip.SetCustomWidth(actual.Width, id);
+                display.Spaces.Workspaces[workspace].SetColumnWidthFromResize(id, actual.Width);
                 foreach (var sibling in strip.Columns[column].Windows) placed.Remove(sibling);
                 display.Spaces.Workspaces[workspace].EnsureFocusedVisible();
                 Log.Debug($"Adopted width {actual.Width} for {Describe(id)}");
@@ -1114,7 +1121,7 @@ internal sealed class WindowManager : IDisposable
             display.Spaces.Settings = new LayoutSettings(
                 gap: Math.Round(settings.Gap * scale), sliver: Math.Round(standard.Sliver * scale), widthPresets: standard.WidthPresets,
                 defaultWidthIndex: standard.DefaultWidthIndex, tabBarHeight: Math.Round(standard.TabBarHeight * scale),
-                tabBarSpacing: Math.Round(standard.TabBarSpacing * scale));
+                tabBarSpacing: Math.Round(standard.TabBarSpacing * scale), defaultLayout: settings.DefaultLayout);
             display.Spaces.Viewport = monitor.WorkArea;
             return display;
         })];

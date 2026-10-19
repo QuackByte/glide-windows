@@ -30,6 +30,7 @@ Glide takes over the Windows key the way FancyZones' "Override Windows Snap" doe
 | Toggle full width | Win+Ctrl+F | Find computers |
 | Center column | Win+Ctrl+C | Color filters |
 | Toggle tabbed column | Win+Ctrl+W | |
+| Switch the workspace between scrolling and tiled | Win+Ctrl+T | |
 | Toggle floating | Win+Ctrl+V | Sound output flyout |
 | Focus monitor left / right | Win+Alt+← / → | |
 | Send column to monitor left / right | Win+Alt+Shift+← / → | |
@@ -58,6 +59,7 @@ Everything is stored in `%APPDATA%\Glide\settings.json` and applies as you chang
 {
   "gap": 12,
   "animate": true,
+  "defaultLayout": "Scrolling",
   "focusRing": true,
   "focusRingColor": "accent",
   "focusRingWidth": 4,
@@ -79,7 +81,7 @@ Everything is stored in `%APPDATA%\Glide\settings.json` and applies as you chang
 }
 ```
 
-Action names are those in [`Action.cs`](src/Glide.Core/Action.cs). `focusRingColor` is `accent` or `#RRGGBB`; `horizontalWheel` is `Always`, `WithWin` or `Off`. In rules, `mode` is `Automatic`, `Float` or `Tile`, `widthIndex` picks ⅓, ½, ⅔ or full (0–3), and `workspace` is zero-based.
+Action names are those in [`Action.cs`](src/Glide.Core/Action.cs). `focusRingColor` is `accent` or `#RRGGBB`; `horizontalWheel` is `Always`, `WithWin` or `Off`; `defaultLayout` is `Scrolling` or `Tiled` (any capitalization), for workspaces you haven't switched with Win+Ctrl+T. In rules, `mode` is `Automatic`, `Float` or `Tile`, `widthIndex` picks ⅓, ½, ⅔ or full (0–3), and `workspace` is zero-based.
 
 ## How it behaves
 

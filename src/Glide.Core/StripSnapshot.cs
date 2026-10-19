@@ -26,12 +26,14 @@ public sealed class StripSnapshot : IEquatable<StripSnapshot>
         public override int GetHashCode() => HashCode.Combine(Windows.Count, FocusedRow, WidthIndex);
     }
 
-    public sealed record WorkspaceState(IReadOnlyList<ColumnState> Columns, WindowId? FocusedWindow)
+    public sealed record WorkspaceState(IReadOnlyList<ColumnState> Columns, WindowId? FocusedWindow,
+                                        /* Optional so snapshots saved before the tiled layout existed still load; null follows the default. */ LayoutMode? Layout = null)
     {
-        public static WorkspaceState From(Strip strip) => new([.. strip.Columns.Select(ColumnState.From)], strip.FocusedWindow);
+        public static WorkspaceState From(Strip strip, LayoutMode? layout = null) =>
+            new([.. strip.Columns.Select(ColumnState.From)], strip.FocusedWindow, layout);
 
         public bool Equals(WorkspaceState? other) =>
-            other is not null && FocusedWindow == other.FocusedWindow && Columns.SequenceEqual(other.Columns);
+            other is not null && FocusedWindow == other.FocusedWindow && Layout == other.Layout && Columns.SequenceEqual(other.Columns);
 
         public override int GetHashCode() => HashCode.Combine(Columns.Count, FocusedWindow);
     }
@@ -62,7 +64,7 @@ public sealed class StripSnapshot : IEquatable<StripSnapshot>
     public StripSnapshot(WorkspaceSet set, IEnumerable<WindowId> userFloating, IEnumerable<WindowId> userTiled, DateTimeOffset bootTime)
         : this(set.Active.Strip, userFloating, userTiled, bootTime)
     {
-        Workspaces = [.. set.Workspaces.Select(w => WorkspaceState.From(w.Strip))];
+        Workspaces = [.. set.Workspaces.Select(w => WorkspaceState.From(w.Strip, w.LayoutOverride))];
         ActiveWorkspace = set.ActiveIndex;
     }
 
@@ -77,6 +79,10 @@ public sealed class StripSnapshot : IEquatable<StripSnapshot>
     public IReadOnlyList<WindowId> UserTiled { get; }
     /// <summary>Window handles are only unique until Windows restarts, so a snapshot from an earlier boot is ignored.</summary>
     public DateTimeOffset BootTime { get; }
+
+    /// <summary>Each workspace's own layout, in order; null where it follows the default.</summary>
+    [JsonIgnore]
+    public IReadOnlyList<LayoutMode?> Layouts => [.. SavedWorkspaces.Select(w => w.Layout)];
 
     private IReadOnlyList<WorkspaceState> SavedWorkspaces => Workspaces ?? [new WorkspaceState(Columns, FocusedWindow)];
 

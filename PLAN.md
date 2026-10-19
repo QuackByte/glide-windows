@@ -27,6 +27,7 @@ Proposed defaults, keeping the macOS shape (base modifier to focus, add Shift to
 | Toggle full width | ⌃⌥F | Win+Ctrl+F | Find computers (domain PCs only) |
 | Center column | ⌃⌥C | Win+Ctrl+C | Color filters (off by default) |
 | Toggle tabbed column | ⌃⌥W | Win+Ctrl+W | (free) |
+| Switch workspace layout (scrolling / tiled) | n/a | Win+Ctrl+T | (free) |
 | Toggle floating | ⌃⌥V | Win+Ctrl+V | Sound output flyout (Windows 11) |
 | Enable or disable tiling | ⌃⌥⇧T | Win+Ctrl+Shift+T | (free) |
 

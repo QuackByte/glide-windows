@@ -39,6 +39,7 @@ public sealed class Keymap : IEquatable<Keymap>
             [GlideAction.ToggleOverview] = new(KeyCode.Tab, win),
             [GlideAction.ToggleFloating] = new(KeyCode.V, command),
             [GlideAction.ToggleTiling] = new(KeyCode.T, commandShift),
+            [GlideAction.ToggleLayout] = new(KeyCode.T, command),
             // The key with "?" on it, on US keyboards.
             [GlideAction.ShowShortcuts] = new(KeyCode.Slash, command),
             [GlideAction.FocusPreviousWorkspace] = new(KeyCode.LeftArrow, command),

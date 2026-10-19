@@ -1,9 +1,21 @@
+using System.Text.Json.Serialization;
+
 namespace Glide.Core;
+
+/// <summary>How a workspace arranges its columns. Names are persisted; do not rename them.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<LayoutMode>))]
+public enum LayoutMode
+{
+    /// <summary>Columns keep their preset widths on a strip that scrolls.</summary>
+    Scrolling,
+    /// <summary>Columns share the screen width, so they all fit on screen.</summary>
+    Tiled,
+}
 
 public sealed record LayoutSettings
 {
     public LayoutSettings(double gap = 12, double sliver = 4, IReadOnlyList<double>? widthPresets = null, int defaultWidthIndex = 1,
-                          double tabBarHeight = 28, double tabBarSpacing = 4)
+                          double tabBarHeight = 28, double tabBarSpacing = 4, LayoutMode defaultLayout = LayoutMode.Scrolling)
     {
         widthPresets ??= [1.0 / 3, 0.5, 2.0 / 3, 1];
         if (widthPresets.Count == 0) throw new ArgumentException("At least one width preset is required", nameof(widthPresets));
@@ -13,6 +25,7 @@ public sealed record LayoutSettings
         DefaultWidthIndex = Math.Clamp(defaultWidthIndex, 0, widthPresets.Count - 1);
         TabBarHeight = tabBarHeight;
         TabBarSpacing = tabBarSpacing;
+        DefaultLayout = defaultLayout;
     }
 
     /// <summary>Space between columns, between stacked windows, and around the viewport edge.</summary>
@@ -25,6 +38,8 @@ public sealed record LayoutSettings
     /// <summary>Height of a tabbed column's tab bar; the window sits <see cref="TabBarSpacing"/> below it.</summary>
     public double TabBarHeight { get; init; }
     public double TabBarSpacing { get; init; }
+    /// <summary>The layout of every workspace the user hasn't switched by hand.</summary>
+    public LayoutMode DefaultLayout { get; init; }
 
     public static LayoutSettings Standard { get; } = new();
 }
@@ -71,6 +86,17 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     /// <summary>Widths that apps refused to shrink below, keyed by window.</summary>
     public Dictionary<WindowId, double> MinimumWidths { get; } = [];
 
+    /// <summary>This workspace's own layout, once the user has switched it; null follows <see cref="LayoutSettings.DefaultLayout"/>.</summary>
+    public LayoutMode? LayoutOverride { get; set; }
+    public LayoutMode Layout => LayoutOverride ?? Settings.DefaultLayout;
+
+    /// <summary>Switches between scrolling and tiled, for this workspace only.</summary>
+    public void ToggleLayout()
+    {
+        LayoutOverride = Layout == LayoutMode.Scrolling ? LayoutMode.Tiled : LayoutMode.Scrolling;
+        SettleScroll();
+    }
+
     // Geometry
 
     public double UsableWidth => Math.Max(Viewport.Width - 2 * Settings.Gap, 0);
@@ -81,28 +107,89 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     /// </summary>
     public Point HiddenOrigin => new(Viewport.MaxX - 1, Viewport.MaxY - 1);
 
-    public double Width(int columnIndex)
+    public double Width(int columnIndex) => Layout == LayoutMode.Tiled ? Widths()[columnIndex] : ScrollingWidth(columnIndex);
+
+    /// <summary>A column's width on the strip: its preset or custom width, at least as wide as its windows allow.</summary>
+    private double ScrollingWidth(int columnIndex)
     {
         var column = Strip.Columns[columnIndex];
+        var preset = column.IsFullWidth ? PresetWidth(1) : Weight(column);
+        return Math.Min(Math.Max(preset, MinimumWidth(column)), UsableWidth);
+    }
+
+    /// <summary>What a column asks for: its custom width, else its preset's width. Tiled columns share the screen in this proportion.</summary>
+    private double Weight(Column column)
+    {
         var presets = Settings.WidthPresets;
-        var fraction = column.IsFullWidth ? 1 : presets[Math.Clamp(column.WidthIndex, 0, presets.Count - 1)];
-        var preset = column.IsFullWidth ? PresetWidth(fraction) : column.CustomWidth is { } custom ? Rounding.Round(custom) : PresetWidth(fraction);
-        var minimum = column.Windows.Select(w => MinimumWidths.GetValueOrDefault(w)).DefaultIfEmpty(0).Max();
-        return Math.Min(Math.Max(preset, minimum), UsableWidth);
+        return column.CustomWidth is { } custom ? Rounding.Round(custom) : PresetWidth(presets[Math.Clamp(column.WidthIndex, 0, presets.Count - 1)]);
+    }
+
+    private double MinimumWidth(Column column) => column.Windows.Select(w => MinimumWidths.GetValueOrDefault(w)).DefaultIfEmpty(0).Max();
+
+    /// <summary>Every column's width, worked out once. Tiled columns split what's left after full-width ones.</summary>
+    private List<double> Widths()
+    {
+        var columns = Strip.Columns;
+        if (Layout == LayoutMode.Scrolling) return [.. Enumerable.Range(0, columns.Count).Select(ScrollingWidth)];
+
+        var widths = new double[columns.Count];
+        var shared = new List<int>();
+        for (var index = 0; index < columns.Count; index++)
+        {
+            if (columns[index].IsFullWidth) widths[index] = ScrollingWidth(index);
+            else shared.Add(index);
+        }
+        if (shared.Count == 0) return [.. widths];
+
+        // Columns split the room in proportion to their weights, but never below a window's minimum:
+        // those keep their minimum and the rest share what remains.
+        var room = UsableWidth - Settings.Gap * (shared.Count - 1);
+        var weights = shared.ToDictionary(i => i, i => Math.Max(Weight(columns[i]), 1));
+        var pinned = new HashSet<int>();
+        var changed = true;
+        while (changed)
+        {
+            changed = false;
+            var open = shared.Where(i => !pinned.Contains(i)).ToList();
+            var left = room - pinned.Sum(i => MinimumWidth(columns[i]));
+            var total = open.Sum(i => weights[i]);
+            foreach (var i in open)
+            {
+                if (MinimumWidth(columns[i]) <= left * weights[i] / total) continue;
+                pinned.Add(i);
+                changed = true;
+                break;
+            }
+        }
+        var remaining = room - pinned.Sum(i => MinimumWidth(columns[i]));
+        var sharing = shared.Where(i => !pinned.Contains(i)).ToList();
+        var weightTotal = sharing.Sum(i => weights[i]);
+        foreach (var i in shared)
+            widths[i] = pinned.Contains(i) ? MinimumWidth(columns[i]) : Rounding.Round(remaining * weights[i] / weightTotal);
+        // Rounding leaves a pixel or two over or short; the last shared column takes it so they fill the screen exactly.
+        if (sharing.Count > 0)
+        {
+            var last = sharing[^1];
+            widths[last] = Math.Max(widths[last] + room - shared.Sum(i => widths[i]), 1);
+        }
+        for (var i = 0; i < widths.Length; i++) widths[i] = Math.Min(widths[i], UsableWidth);
+        return [.. widths];
     }
 
     /// <summary>Preset fractions are of the whole viewport, so two ½ columns exactly fill it, gaps included.</summary>
     public double PresetWidth(double fraction) => Rounding.Round((Viewport.Width - Settings.Gap) * fraction - Settings.Gap);
 
     /// <summary>The strip coordinate of each column's left edge.</summary>
-    public IReadOnlyList<double> ColumnOffsets()
+    public IReadOnlyList<double> ColumnOffsets() => Offsets(Widths());
+
+    private List<double> Offsets(IReadOnlyList<double> widths)
     {
-        var offsets = new List<double>(Strip.Columns.Count);
+        var offsets = new List<double>(widths.Count);
         double x = 0;
-        for (var index = 0; index < Strip.Columns.Count; index++)
+        foreach (var width in widths)
         {
             offsets.Add(x);
-            x += Width(index) + Settings.Gap;
+            x += width + Settings.Gap;
         }
         return offsets;
     }
@@ -112,8 +199,8 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
         get
         {
             if (Strip.IsEmpty) return 0;
-            var last = Strip.Columns.Count - 1;
-            return ColumnOffsets()[last] + Width(last);
+            var widths = Widths();
+            return Offsets(widths)[^1] + widths[^1];
         }
     }
 
@@ -128,8 +215,9 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
             return;
         }
         var index = Strip.FocusedColumnIndex;
-        var left = ColumnOffsets()[index];
-        var right = left + Width(index);
+        var widths = Widths();
+        var left = Offsets(widths)[index];
+        var right = left + widths[index];
         if (left < ScrollOffset)
             ScrollOffset = left;
         else if (right > ScrollOffset + UsableWidth)
@@ -140,7 +228,8 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     {
         if (Strip.IsEmpty) return;
         var index = Strip.FocusedColumnIndex;
-        ScrollOffset = Rounding.Round(ColumnOffsets()[index] + Width(index) / 2 - UsableWidth / 2);
+        var widths = Widths();
+        ScrollOffset = Rounding.Round(Offsets(widths)[index] + widths[index] / 2 - UsableWidth / 2);
     }
 
     /// <summary>
@@ -179,12 +268,13 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     public double SnappedOffset(double offset)
     {
         var (lower, upper) = ScrollBounds;
-        var offsets = ColumnOffsets();
+        var widths = Widths();
+        var offsets = Offsets(widths);
         var candidates = new List<double> { lower, upper };
-        for (var index = 0; index < Strip.Columns.Count; index++)
+        for (var index = 0; index < widths.Count; index++)
         {
             candidates.Add(offsets[index]);
-            candidates.Add(offsets[index] + Width(index) - UsableWidth);
+            candidates.Add(offsets[index] + widths[index] - UsableWidth);
         }
         return candidates.Select(c => Math.Min(Math.Max(c, lower), upper)).MinBy(c => Math.Abs(c - offset));
     }
@@ -202,15 +292,16 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
             return false;
         }
         ScrollOffset = SnappedOffset(projectedOffset);
-        var offsets = ColumnOffsets();
+        var widths = Widths();
+        var offsets = Offsets(widths);
         bool FullyVisible(int index) =>
-            offsets[index] >= ScrollOffset - 0.5 && offsets[index] + Width(index) <= ScrollOffset + UsableWidth + 0.5;
+            offsets[index] >= ScrollOffset - 0.5 && offsets[index] + widths[index] <= ScrollOffset + UsableWidth + 0.5;
 
         if (FullyVisible(Strip.FocusedColumnIndex)) return false;
         var middle = ScrollOffset + UsableWidth / 2;
         var all = Enumerable.Range(0, Strip.Columns.Count).ToList();
         var candidates = all.Where(FullyVisible).ToList();
-        var nearest = (candidates.Count == 0 ? all : candidates).MinBy(i => Math.Abs(offsets[i] + Width(i) / 2 - middle));
+        var nearest = (candidates.Count == 0 ? all : candidates).MinBy(i => Math.Abs(offsets[i] + widths[i] / 2 - middle));
         Strip.Focus(Strip.Columns[nearest].FocusedWindow);
         EnsureFocusedVisible();
         return true;
@@ -240,6 +331,9 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
             case GlideAction.CycleColumnWidthBackward: changed = CycleWidth(forward: false); break;
             case GlideAction.ToggleFullWidth: changed = Strip.ToggleFullWidth(); break;
             case GlideAction.ToggleTabbed: changed = Strip.ToggleTabbed(); break;
+            case GlideAction.ToggleLayout:
+                ToggleLayout();
+                return true;
             case GlideAction.CenterColumn:
                 var before = ScrollOffset;
                 CenterFocusedColumn();
@@ -250,7 +344,8 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
         }
         if (changed)
         {
-            if (action is GlideAction.ConsumeOrExpelLeft or GlideAction.ConsumeOrExpelRight)
+            // Tiled columns fit on screen, so the strip goes back to the start when a zoomed column returns to its share.
+            if (action is GlideAction.ConsumeOrExpelLeft or GlideAction.ConsumeOrExpelRight || Layout == LayoutMode.Tiled)
                 SettleScroll();
             else
                 EnsureFocusedVisible();
@@ -273,6 +368,24 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
         return Strip.SetWidthIndex(index);
     }
 
+    /// <summary>
+    /// Gives the column holding <paramref name="window"/> the width the user just dragged it to. On
+    /// the strip that is its width; tiled, the width is a share of the screen, so it becomes the
+    /// weight that lands the column near <paramref name="width"/> with the other columns' weights
+    /// unchanged. Returns false if the window isn't here.
+    /// </summary>
+    public bool SetColumnWidthFromResize(WindowId window, double width)
+    {
+        if (Layout == LayoutMode.Scrolling || Strip.Location(window) is not (int index, _))
+            return Strip.SetCustomWidth(width, window);
+        var others = Strip.Columns.Where((c, i) => i != index && !c.IsFullWidth).Select(Weight).ToList();
+        if (others.Count == 0) return Strip.SetCustomWidth(width, window);
+        // With W the wanted width, w / (w + others) = W / room, so w = W × others / (room - W).
+        var room = UsableWidth - Settings.Gap * others.Count;
+        var wanted = Math.Clamp(width, room * 0.1, room * 0.9);
+        return Strip.SetCustomWidth(wanted * others.Sum() / (room - wanted), window);
+    }
+
     // Placement
 
     public IReadOnlyList<WindowPlacement> Placements()
@@ -280,12 +393,14 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
         var gap = Settings.Gap;
         var columnHeight = Math.Max(Viewport.Height - 2 * gap, 0);
         var result = new List<WindowPlacement>();
+        var widths = Widths();
+        var offsets = Offsets(widths);
 
         for (var index = 0; index < Strip.Columns.Count; index++)
         {
             var column = Strip.Columns[index];
-            var (x, visibility) = Position(index);
-            var width = Width(index);
+            var width = widths[index];
+            var (x, visibility) = Position(width, offsets[index]);
             var top = Viewport.MinY + gap;
 
             if (column.IsTabbed)
@@ -317,12 +432,14 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     public IReadOnlyList<TabBarPlacement> TabBars()
     {
         var result = new List<TabBarPlacement>();
+        var widths = Widths();
+        var offsets = Offsets(widths);
         for (var index = 0; index < Strip.Columns.Count; index++)
         {
             var column = Strip.Columns[index];
-            var (x, visibility) = Position(index);
+            var (x, visibility) = Position(widths[index], offsets[index]);
             if (!column.IsTabbed || visibility is not (Visibility.Visible or Visibility.Partial)) continue;
-            var frame = new Rect(Rounding.Round(x), Viewport.MinY + Settings.Gap, Width(index), Settings.TabBarHeight);
+            var frame = new Rect(Rounding.Round(x), Viewport.MinY + Settings.Gap, widths[index], Settings.TabBarHeight);
             result.Add(new TabBarPlacement(index, frame, [.. column.Windows], column.FocusedRow));
         }
         return result;
@@ -360,10 +477,9 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     }
 
     /// <summary>A column's left edge on screen, and whether it is visible or parked at an edge.</summary>
-    private (double X, Visibility Visibility) Position(int index)
+    private (double X, Visibility Visibility) Position(double width, double offset)
     {
-        var width = Width(index);
-        var x = Viewport.MinX + Settings.Gap + ColumnOffsets()[index] - ScrollOffset;
+        var x = Viewport.MinX + Settings.Gap + offset - ScrollOffset;
         var overlap = Math.Min(x + width, Viewport.MaxX) - Math.Max(x, Viewport.MinX);
         if (x >= Viewport.MinX - 0.5 && x + width <= Viewport.MaxX + 0.5)
             return (x, Visibility.Visible);

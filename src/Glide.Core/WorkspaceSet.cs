@@ -162,12 +162,13 @@ public sealed class WorkspaceSet
         return target;
     }
 
-    /// <summary>Rebuilds the set from saved strips, e.g. after a relaunch.</summary>
-    public void Restore(IReadOnlyList<Strip> strips, int activeIndex)
+    /// <summary>Rebuilds the set from saved strips and their layouts (none: all follow the default), e.g. after a relaunch.</summary>
+    public void Restore(IReadOnlyList<Strip> strips, int activeIndex, IReadOnlyList<LayoutMode?>? layouts = null)
     {
         for (var index = 0; index < Count; index++)
         {
             workspaces[index].Strip = index < strips.Count ? strips[index] : new Strip();
+            workspaces[index].LayoutOverride = layouts is not null && index < layouts.Count ? layouts[index] : null;
             workspaces[index].SettleScroll();
         }
         ActiveIndex = IsValid(activeIndex) ? activeIndex : 0;
