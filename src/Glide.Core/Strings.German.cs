@@ -110,6 +110,7 @@ public static partial class Strings
         ["{0} columns when tiled"] = "{0} Spalten beim Kacheln",
         ["Workspace {0} is empty"] = "Arbeitsbereich {0} ist leer",
         ["Workspace {0}"] = "Arbeitsbereich {0}",
+        ["{0} has a minimum width of {1} px, so Glide can't make it narrower."] = "{0} hat eine Mindestbreite von {1} px, daher kann Glide das Fenster nicht schmaler machen.",
 
         // Overview and tab bars
         ["Type to filter windows"] = "Tippen, um Fenster zu filtern",

@@ -108,6 +108,9 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     /// <summary>The window whose tile fills the screen (tiled "full width"); only counts while that tile has focus.</summary>
     public WindowId? ZoomedWindow { get; private set; }
 
+    /// <summary>The window whose learned minimum width stopped the last width change short, so the user can be told why; null if none did.</summary>
+    public WindowId? MinimumLimit { get; private set; }
+
     /// <summary>
     /// Switches between scrolling and tiled, for this workspace only. Going tiled gives every
     /// window of a stack its own column; going back to scrolling gives every column the default width.
@@ -317,6 +320,7 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     /// <summary>Applies a layout action. Returns false if it changed nothing or is not a layout action.</summary>
     public bool Perform(GlideAction action)
     {
+        MinimumLimit = null;
         if (action == GlideAction.CycleTiledColumns)
         {
             CycleTiledColumns();
@@ -387,25 +391,42 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     /// </summary>
     public bool SetColumnWidthFromResize(WindowId window, double width)
     {
-        if (Layout == LayoutMode.Scrolling) return Strip.SetCustomWidth(width, window);
+        MinimumLimit = null;
+        if (Layout == LayoutMode.Scrolling)
+        {
+            if (Strip.Location(window) is not (int column, _)) return Strip.SetCustomWidth(width, window);
+            var before = Width(column);
+            var changed = Strip.SetCustomWidth(width, window);
+            NoteMinimum(Strip.Columns[column].Windows, width, before);
+            return changed;
+        }
         var tiles = Tiles();
         var index = tiles.FindIndex(t => TileWindows(t).Contains(window));
         if (index < 0 || ZoomedWindow is not null) return false;
         var count = tiles.Count;
-        var splits = TiledLayout.Splits(Viewport, count, TiledColumns, Settings.Gap, EffectiveRatios(count));
-        // The split that sizes the tile across: its own if that one is side by side (the tile is its first part), else the nearest earlier one (it is in the second part).
-        int split;
-        bool first;
-        if (index < count - 1 && splits[index].SideBySide)
-            (split, first) = (index, true);
-        else if (Enumerable.Range(0, Math.Min(index, count - 1)).Reverse().Where(j => splits[j].SideBySide).Cast<int?>().FirstOrDefault() is int earlier)
-            (split, first) = (earlier, false);
-        else
-            return false;
-        var available = splits[split].Room.Width - Settings.Gap;
+        if (TiledLayout.SizingSplit(index, count, TiledColumns) is not { } sizing) return false;
+        var splits = TiledLayout.Splits(Viewport, count, TiledColumns, Settings.Gap, FittedRatios(tiles));
+        var available = splits[sizing.Split].Room.Width - Settings.Gap;
         if (available <= 0) return false;
+        NoteMinimum(TileWindows(tiles[index]), width, PlacedFrames(tiles)[index].Width);
         var share = Math.Clamp(width / available, 0.1, 0.9);
-        return SetTiledRatio(split, count, first ? share : 1 - share);
+        return SetTiledRatio(sizing.Split, tiles, sizing.First ? share : 1 - share);
+    }
+
+    /// <summary>
+    /// Notes the window whose minimum width stopped a resize: the column or tile was made narrower than <paramref name="before"/>
+    /// and has ended up at its minimum.
+    /// </summary>
+    private void NoteMinimum(IEnumerable<WindowId> windows, double requested, double before)
+    {
+        if (LargestMinimum(windows) is { } window && requested <= MinimumWidths[window] + 2 && requested < before - 2) MinimumLimit = window;
+    }
+
+    /// <summary>The window with the widest learned minimum among these, if any has one.</summary>
+    private WindowId? LargestMinimum(IEnumerable<WindowId> windows)
+    {
+        var learned = windows.Where(MinimumWidths.ContainsKey).ToList();
+        return learned.Count == 0 ? null : learned.MaxBy(w => MinimumWidths[w]);
     }
 
     // Tiled
@@ -434,6 +455,17 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     /// <summary>The splits' ratios, if they were set for this many tiles.</summary>
     private IReadOnlyList<double>? EffectiveRatios(int count) => TiledRatios is { } ratios && ratios.Count == count - 1 ? ratios : null;
 
+    /// <summary>The widest learned minimum width among a tile's windows (0 if none has one).</summary>
+    private double MinimumOf(Tile tile) => TileWindows(tile).Select(w => MinimumWidths.GetValueOrDefault(w)).DefaultIfEmpty(0).Max();
+
+    /// <summary>
+    /// The split ratios with each tile given its minimum width where they can be (see <see cref="TiledLayout.FitMinimums"/>);
+    /// the stored ones where they can't, so the tiles overlap as they did before.
+    /// </summary>
+    private IReadOnlyList<double>? FittedRatios(IReadOnlyList<Tile> tiles) =>
+        TiledLayout.FitMinimums(Viewport, tiles.Count, TiledColumns, Settings.Gap, EffectiveRatios(tiles.Count), tiles.Select(MinimumOf).ToList())
+        ?? EffectiveRatios(tiles.Count);
+
     /// <summary>The tile holding the zoomed window, while it has focus.</summary>
     private int? ZoomedTile(IReadOnlyList<Tile> tiles)
     {
@@ -443,15 +475,16 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     }
 
     /// <summary>
-    /// Every tile's frame as the spiral lays it out, before minimum widths and zoom: what focus
-    /// and move go by, and what the ratios shape.
+    /// Every tile's frame as the spiral lays it out, with the splits fitted to minimum widths but
+    /// before zoom: what focus and move go by, and what the ratios shape.
     /// </summary>
     private List<Rect> TileFrames(IReadOnlyList<Tile> tiles) =>
-        [.. TiledLayout.Frames(Viewport, tiles.Count, TiledColumns, Settings.Gap, EffectiveRatios(tiles.Count))];
+        [.. TiledLayout.Frames(Viewport, tiles.Count, TiledColumns, Settings.Gap, FittedRatios(tiles))];
 
     /// <summary>
-    /// The frames tiles are sent to: a tile narrower than a window in it allows gets that window's
-    /// minimum width within its own x, overlapping its neighbour if it must; a zoomed tile fills the screen.
+    /// The frames tiles are sent to. A tile narrower than a window in it allows gets that window's
+    /// minimum width within its own x, overlapping its neighbour; that only happens when the minimums
+    /// can't all fit (see <see cref="FittedRatios"/>). A zoomed tile fills the screen.
     /// </summary>
     private List<Rect> PlacedFrames(IReadOnlyList<Tile> tiles)
     {
@@ -459,7 +492,7 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
         var right = Viewport.MaxX - Settings.Gap;
         for (var index = 0; index < frames.Count; index++)
         {
-            var minimum = TileWindows(tiles[index]).Select(w => MinimumWidths.GetValueOrDefault(w)).DefaultIfEmpty(0).Max();
+            var minimum = MinimumOf(tiles[index]);
             if (frames[index].Width >= minimum) continue;
             var width = Math.Min(minimum, UsableWidth);
             frames[index] = frames[index] with { X = Math.Min(frames[index].X, Math.Max(right - width, Viewport.MinX + Settings.Gap)), Width = width };
@@ -554,16 +587,30 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
         const double tolerance = 0.01;
         var next = forward ? presets.Where(p => p > share + tolerance).DefaultIfEmpty(presets[0]).First()
                            : presets.Where(p => p < share - tolerance).DefaultIfEmpty(presets[^1]).Last();
-        return SetTiledRatio(split, count, index == count - 1 ? 1 - next : next);
+        return SetTiledRatio(split, Tiles(), index == count - 1 ? 1 - next : next);
     }
 
-    /// <summary>Sets one split's ratio, keeping the others as they are. Returns false if it already was that.</summary>
-    private bool SetTiledRatio(int split, int count, double ratio)
+    /// <summary>
+    /// Sets one split's ratio, keeping the others as they are. A split that would leave a tile
+    /// narrower than its window's minimum stops where that tile fits, and <see cref="MinimumLimit"/>
+    /// names the window. Returns false if the split stays as it was.
+    /// </summary>
+    private bool SetTiledRatio(int split, IReadOnlyList<Tile> tiles, double ratio)
     {
+        var count = tiles.Count;
         var current = EffectiveRatios(count);
         var updated = Enumerable.Range(0, count - 1).Select(k => TiledLayout.IsSet(k, current) ? current![k] : 0).ToList();
-        if (Math.Abs(updated[split] - ratio) < 0.001) return false;
+        var previous = updated[split];
         updated[split] = ratio;
+        if (TiledLayout.FitMinimums(Viewport, count, TiledColumns, Settings.Gap, updated, tiles.Select(MinimumOf).ToList()) is { } fitted
+            && Math.Abs(fitted[split] - ratio) > 0.001)
+        {
+            // Too little for the first part: that tile is the one held up. Too much: it's the second part's tiles.
+            var secondPart = Enumerable.Range(0, count).Where(t => TiledLayout.SizingSplit(t, count, TiledColumns) is { Split: var s, First: false } && s == split);
+            MinimumLimit = fitted[split] > ratio ? LargestMinimum(TileWindows(tiles[split])) : LargestMinimum(secondPart.SelectMany(t => TileWindows(tiles[t])));
+            updated[split] = fitted[split];
+        }
+        if (Math.Abs(updated[split] - previous) < 0.001) return false;
         TiledRatios = updated;
         return true;
     }

@@ -110,6 +110,7 @@ public static partial class Strings
         ["{0} columns when tiled"] = "タイル時は{0}列",
         ["Workspace {0} is empty"] = "ワークスペース{0}は空です",
         ["Workspace {0}"] = "ワークスペース{0}",
+        ["{0} has a minimum width of {1} px, so Glide can't make it narrower."] = "{0} の最小幅は {1} px のため、Glide では幅を狭められません。",
 
         // Overview and tab bars
         ["Type to filter windows"] = "入力してウィンドウを絞り込み",

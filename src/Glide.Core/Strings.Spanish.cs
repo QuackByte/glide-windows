@@ -105,6 +105,7 @@ public static partial class Strings
         ["{0} columns when tiled"] = "{0} columnas en mosaico",
         ["Workspace {0} is empty"] = "El escritorio {0} está vacío",
         ["Workspace {0}"] = "Escritorio {0}",
+        ["{0} has a minimum width of {1} px, so Glide can't make it narrower."] = "{0} tiene un ancho mínimo de {1} px, así que Glide no puede hacer su ventana más estrecha.",
 
         // Overview and tab bars
         ["Type to filter windows"] = "Escribe para filtrar ventanas",

@@ -267,17 +267,52 @@ public class TiledLayoutTests
     }
 
     [Fact]
-    public void MinimumWidthsGiveTheTileItsMinimumWithinItsX()
+    public void AMinimumWiderThanItsTileTakesItFromTheNeighbour()
     {
         var ws = Make(2);
         ws.MinimumWidths[1] = 800;
         var frames = Frames(ws);
-        Assert.Equal(new Rect(12, 52, 800, 776), frames[1]); // Overlaps its neighbour at x = 612
-        Assert.Equal(new Rect(612, 52, 588, 776), frames[2]);
-        ws.MinimumWidths[2] = 700;
-        Assert.Equal(new Rect(500, 52, 700, 776), Frames(ws)[2]); // Pulled left so it stays on screen
+        Assert.Equal(new Rect(12, 52, 800, 776), frames[1]);
+        Assert.Equal(new Rect(824, 52, 376, 776), frames[2]); // Shrunk to make room: no overlap
+        Assert.Equal(frames[1].MaxX + 12, frames[2].MinX);
+    }
+
+    [Fact]
+    public void ASecondPartTileShrinksItsSplitThroughTheEarlierOne()
+    {
+        var ws = Make(3); // 1 | (2 over 3): tiles 2 and 3 both sit in the second part of the first split
+        ws.MinimumWidths[3] = 900;
+        var frames = Frames(ws);
+        Assert.Equal(900, frames[3].Width);
+        Assert.Equal(900, frames[2].Width); // The top tile in that part shares its width
+        Assert.Equal(276, frames[1].Width); // The first part gets what is left
+        Assert.Equal(300, frames[3].MinX);
+        Assert.True(frames[1].MaxX + 12 <= frames[3].MinX);
+    }
+
+    [Fact]
+    public void MinimumsThatCannotFitFallBackToOverlap()
+    {
+        var ws = Make(2);
+        ws.MinimumWidths[1] = 800;
+        ws.MinimumWidths[2] = 700; // 1500 px of minimums in 1176 px of room
+        var frames = Frames(ws);
+        Assert.Equal(new Rect(12, 52, 800, 776), frames[1]); // Overlaps its neighbour
+        Assert.Equal(new Rect(500, 52, 700, 776), frames[2]); // Pulled left so it stays on screen
         ws.MinimumWidths[2] = 5000;
         Assert.Equal(ws.UsableWidth, Frames(ws)[2].Width);
+    }
+
+    [Fact]
+    public void ANeighbourNeverGivesUpItsLastTenPercent()
+    {
+        var ws = Make(2);
+        ws.MinimumWidths[2] = 1100; // Would leave the first tile 76 px, under a tenth of the room
+        Assert.Equal(new Rect(100, 52, 1100, 776), Frames(ws)[2]);
+        Assert.Equal(new Rect(12, 52, 588, 776), Frames(ws)[1]);
+        ws.MinimumWidths[2] = 1000;
+        Assert.Equal(new Rect(12, 52, 176, 776), Frames(ws)[1]);
+        Assert.Equal(new Rect(200, 52, 1000, 776), Frames(ws)[2]);
     }
 
     [Fact]
@@ -713,6 +748,34 @@ public class TiledLayoutTests
         Assert.True(ws.SetColumnWidthFromResize(1, 700));
         Assert.Equal(700, ws.Width(0));
         Assert.Equal(588, ws.Width(1));
+    }
+
+    [Fact]
+    public void ResizingPastAMinimumStopsAtItAndNamesTheWindow()
+    {
+        var ws = Make(2);
+        ws.MinimumWidths[1] = 800;
+        Assert.True(ws.SetColumnWidthFromResize(1, 500));
+        Assert.Equal(800, Frames(ws)[1].Width);
+        Assert.Equal(new WindowId(1), ws.MinimumLimit);
+        Assert.True(ws.SetColumnWidthFromResize(1, 900));
+        Assert.Equal(900, Frames(ws)[1].Width);
+        Assert.Null(ws.MinimumLimit);
+    }
+
+    [Fact]
+    public void CyclingIntoAMinimumStopsAtItAndNamesTheWindow()
+    {
+        var ws = Make(2);
+        ws.MinimumWidths[1] = 800;
+        Assert.True(ws.Perform(GlideAction.CycleColumnWidthBackward)); // 1/2 to 1/3 would be 388 px
+        Assert.Equal(800, Frames(ws)[1].Width);
+        Assert.Equal(new WindowId(1), ws.MinimumLimit);
+        Assert.False(ws.Perform(GlideAction.CycleColumnWidthBackward)); // Already at the minimum
+        Assert.Equal(new WindowId(1), ws.MinimumLimit);
+        ws.MinimumWidths.Clear();
+        Assert.True(ws.Perform(GlideAction.CycleColumnWidth));
+        Assert.Null(ws.MinimumLimit);
     }
 
     // Columns
