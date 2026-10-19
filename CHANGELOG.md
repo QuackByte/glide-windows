@@ -2,6 +2,22 @@
 
 What's new in each version of Glide for Windows. Glide shows the new entries once after it updates, and each release's notes on GitHub come from here, so write for people using Glide. Add an entry for every change worth knowing about under the next version before tagging it, and translate it in each file of `changelog/` (`CHANGELOG.es.md`, `CHANGELOG.fr.md` and so on, same versions, sections and links): Glide shows the notes in its own language, and a test checks they match this file. The GitHub notes stay English.
 
+## 0.10.0 — 2026-10-19
+
+### New
+
+- **Tiled is now a spiral layout.** Win+Ctrl+T switches a workspace to a layout where every window fits on screen: one window fills it, two share it as halves, and from the third on the last column splits again, alternating top and bottom with left and right. It uses 2 columns, or 3 with the new Win+Ctrl+G, which is also what Glide picks on ultrawide monitors. Switching back to scrolling keeps your windows in the same order.
+- **Move around a tiled workspace by direction.** Win+arrows focus the tile next to the focused one, and Win+Shift+arrows swap it with that neighbour. Cycling width (Win+Ctrl+R) changes how the focused tile splits the room with the tiles after it, and Win+Ctrl+F zooms a tile to fill the screen until you press it again.
+- **Choose how many columns tiled workspaces use** in Settings › General › Tiled columns: Automatic (3 on ultrawide monitors, else 2), 2 or 3.
+
+### Changes
+
+- **Sending a window to another workspace moves just that window.** Win+Shift+1…9 and Win+Ctrl+Shift+←/→ used to take the whole column along, and now only the focused window goes, as a column of its own, while you stay on the workspace you're on.
+
+### Fixes
+
+- **Brazilian Portuguese for the Layout setting.** Its description in Settings › General now reads in Brazilian Portuguese ("tela", "você") instead of European.
+
 ## 0.9.3 — 2026-10-19
 
 ### New

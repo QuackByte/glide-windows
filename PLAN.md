@@ -20,7 +20,7 @@ Proposed defaults, keeping the macOS shape (base modifier to focus, add Shift to
 | Move column / window | ⌃⌥⇧ + arrows | Win+Shift + arrows | Move to monitor, stretch vertically |
 | Consume or expel left / right | ⌃⌥[ / ] | Win+[ / ] | (free) |
 | Switch to workspace 1…9 | ⌃⌥1…9 | Win+1…9 | Open the Nth taskbar app |
-| Send column to workspace 1…9 | ⌃⌥⇧1…9 | Win+Shift+1…9 | New instance of the Nth taskbar app |
+| Send window to workspace 1…9 | ⌃⌥⇧1…9 | Win+Shift+1…9 | New instance of the Nth taskbar app |
 | Previous / next workspace | ⌃⌥PgUp / PgDn | Win+Ctrl+← / → | Switch virtual desktop (Glide workspaces take their place) |
 | Overview | ⌃⌥O | Win+Tab | Task View |
 | Cycle width (backward) | ⌃⌥R (⇧) | Win+Ctrl+R (+Shift) | (free) |
@@ -28,6 +28,7 @@ Proposed defaults, keeping the macOS shape (base modifier to focus, add Shift to
 | Center column | ⌃⌥C | Win+Ctrl+C | Color filters (off by default) |
 | Toggle tabbed column | ⌃⌥W | Win+Ctrl+W | (free) |
 | Switch workspace layout (scrolling / tiled) | n/a | Win+Ctrl+T | (free) |
+| Switch tiled columns (2 / 3) | n/a | Win+Ctrl+G | (free) |
 | Toggle floating | ⌃⌥V | Win+Ctrl+V | Sound output flyout (Windows 11) |
 | Enable or disable tiling | ⌃⌥⇧T | Win+Ctrl+Shift+T | (free) |
 
