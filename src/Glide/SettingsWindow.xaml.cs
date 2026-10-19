@@ -116,6 +116,15 @@ public sealed partial class SettingsWindow : Window
         Section(T("Tiling"));
         var tiling = Toggle(host.TilingEnabled, on => host.TilingEnabled = on);
         Card(T("Tile windows"), T("Arrange windows as columns on a scrolling strip. {0} turns it on or off from anywhere.", settings.Keymap.Combo(GlideAction.ToggleTiling) is { } toggle ? KeyLabels.Describe(toggle) : T("A shortcut")), tiling);
+        var layout = Choice([T("Scrolling"), T("Tiled")], (int)settings.DefaultLayout, 220);
+        layout.SelectionChanged += (_, _) =>
+        {
+            settings.DefaultLayout = (LayoutMode)Math.Max(layout.SelectedIndex, 0);
+            Apply();
+        };
+        Card(T("Layout"),
+            T("Scrolling keeps columns at set widths on a strip you scroll along; tiled fits every column on screen. New and untouched workspaces use this. {0} switches the current workspace.",
+              settings.Keymap.Combo(GlideAction.ToggleLayout) is { } switchLayout ? KeyLabels.Describe(switchLayout) : T("A shortcut")), layout);
         Card(T("Start Glide when I sign in"),
             StartupEntry.StartsElevated ? T("Starts as administrator.") : host.IsElevated ? T("Starts as administrator, like now.") : null,
             Toggle(StartupEntry.IsEnabled, on =>

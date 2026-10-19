@@ -26,6 +26,8 @@ public sealed class Settings
 
     /// <summary>Space between columns and around the screen edge, in pixels at 100% scaling.</summary>
     public double Gap { get; set; } = 12;
+    /// <summary>The layout of workspaces you haven't switched with Win+Ctrl+T: "Scrolling" or "Tiled".</summary>
+    public LayoutMode DefaultLayout { get; set; } = LayoutMode.Scrolling;
     /// <summary>Slide windows into place instead of jumping.</summary>
     public bool Animate { get; set; } = true;
     /// <summary>Colors the focused tiled window's border (Windows 11).</summary>
