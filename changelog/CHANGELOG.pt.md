@@ -2,6 +2,13 @@
 
 Novidades de cada versão do Glide para Windows. O Glide mostra as novas entradas uma vez após se atualizar, e as notas de cada versão no GitHub vêm daqui, então escreva para quem usa o Glide. Adicione uma entrada para cada mudança que vale a pena conhecer na próxima versão antes de criar a tag. Esta é uma tradução de CHANGELOG.md, que é o original.
 
+## 0.10.2 — 2026-10-19
+
+### Correções
+
+- **No layout em mosaico, Win+seta para cima e Win+seta para baixo primeiro trocam de aba dentro de um grupo de abas e só depois passam para o mosaico naquela direção.** Quando não restam mais abas naquela direção, elas passam para o mosaico que está nela.
+- **No layout em mosaico, os mosaicos ao lado de um app com largura mínima encolhem para caber nele, em vez de se sobreporem.** O Glide aprende a largura mínima de cada app e, quando um redimensionamento para nessa largura, uma mensagem explica por quê.
+
 ## 0.10.1 — 2026-10-19
 
 ### Correções

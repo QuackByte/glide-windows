@@ -2,6 +2,13 @@
 
 Ce fichier est la traduction française de CHANGELOG.md, qui reste l’original. Il présente les nouveautés de chaque version de Glide pour Windows. Glide affiche les nouvelles entrées une seule fois après une mise à jour, et les notes de chaque version sur GitHub en sont issues.
 
+## 0.10.2 — 2026-10-19
+
+### Corrections
+
+- **En disposition en mosaïque, Win+flèche haut et Win+flèche bas parcourent d’abord les onglets d’un groupe d’onglets, puis passent à la tuile dans cette direction.** Quand il ne reste plus d’onglets dans cette direction, elles passent à la tuile située dans cette direction.
+- **En disposition en mosaïque, les tuiles voisines d’une application ayant une largeur minimale se réduisent pour lui faire de la place au lieu de se chevaucher.** Glide retient la largeur minimale de chaque application et, lorsqu’un redimensionnement s’arrête à cette largeur, un message indique pourquoi.
+
 ## 0.10.1 — 2026-10-19
 
 ### Corrections
