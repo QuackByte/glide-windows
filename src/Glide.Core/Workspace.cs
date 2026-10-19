@@ -519,8 +519,8 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
         {
             case GlideAction.FocusColumnLeft: return FocusTile(TileSide.Left);
             case GlideAction.FocusColumnRight: return FocusTile(TileSide.Right);
-            case GlideAction.FocusWindowUp: return FocusTile(TileSide.Up);
-            case GlideAction.FocusWindowDown: return FocusTile(TileSide.Down);
+            case GlideAction.FocusWindowUp: return FocusTab(VerticalDirection.Up) || FocusTile(TileSide.Up);
+            case GlideAction.FocusWindowDown: return FocusTab(VerticalDirection.Down) || FocusTile(TileSide.Down);
             case GlideAction.MoveColumnLeft: return MoveTile(TileSide.Left);
             case GlideAction.MoveColumnRight: return MoveTile(TileSide.Right);
             case GlideAction.MoveWindowUp: return MoveTile(TileSide.Up);
@@ -556,6 +556,10 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
         Strip.Columns[Strip.FocusedColumnIndex].IsTabbed = true;
         return true;
     }
+
+    /// <summary>Switches to the tab above or below in a focused tab group. False if the tile isn't tabbed or has no tab that way.</summary>
+    private bool FocusTab(VerticalDirection direction) =>
+        Strip.FocusedColumn is { IsTabbed: true } && Strip.FocusWindow(direction);
 
     /// <summary>Moves focus to the tile next to the focused one on a side.</summary>
     private bool FocusTile(TileSide side) =>
