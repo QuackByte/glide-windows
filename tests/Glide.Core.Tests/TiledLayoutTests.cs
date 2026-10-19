@@ -386,12 +386,77 @@ public class TiledLayoutTests
     }
 
     [Fact]
-    public void ConsumeAndExpelDoNothingWhileTiled()
+    public void ConsumeJoinsTheTileOnTheLeftAsATab()
     {
-        var ws = Make(3, focused: 1);
-        Assert.False(ws.Perform(GlideAction.ConsumeOrExpelLeft));
+        var ws = Make(3, focused: 1); // [1][2 over 3]
+        Assert.True(ws.Perform(GlideAction.ConsumeOrExpelLeft));
+        Assert.Equal([[1, 2], [3]], Layout(ws.Strip));
+        Assert.Equal(2, ws.Strip.FocusedWindow);
+        Assert.True(ws.Strip.Columns[0].IsTabbed);
+        Assert.Equal(2, ws.Placements().Count(p => p.Visibility == Visibility.Visible)); // Two tiles
+        ws.EnsureFocusedVisible();
+        Assert.Equal([[1, 2], [3]], Layout(ws.Strip)); // Stays a tab group, not exploded back
+        Assert.Equal(Visibility.Visible, PlacementMap(ws)[2].Visibility);
+        Assert.Equal(Visibility.HiddenTab, PlacementMap(ws)[1].Visibility);
+    }
+
+    [Fact]
+    public void ConsumeJoinsTheTileOnTheRightAsTheLastTab()
+    {
+        var ws = Make(3, focused: 0); // [1][2 over 3]: the right neighbour is the earlier of 2 and 3
+        Assert.True(ws.Perform(GlideAction.ConsumeOrExpelRight));
+        Assert.Equal([[2, 1], [3]], Layout(ws.Strip));
+        Assert.Equal(1, ws.Strip.FocusedWindow);
+        Assert.True(ws.Strip.Columns[0].IsTabbed);
+        Assert.Equal(Visibility.Visible, PlacementMap(ws)[1].Visibility);
+    }
+
+    [Fact]
+    public void ConsumeIntoANeighbourThatIsAlreadyTabbed()
+    {
+        var ws = new Workspace(new Strip([Col([1]), Col([2, 3], isTabbed: true), Col([4])], focusedColumnIndex: 0), Viewport) { LayoutOverride = LayoutMode.Tiled };
+        Assert.True(ws.Perform(GlideAction.ConsumeOrExpelRight));
+        Assert.Equal([[2, 3, 1], [4]], Layout(ws.Strip));
+        Assert.True(ws.Strip.Columns[0].IsTabbed);
+        Assert.Equal(1, ws.Strip.FocusedWindow);
+    }
+
+    [Fact]
+    public void ConsumeDoesNothingWithNoTileOnThatSide()
+    {
+        var ws = Make(3, focused: 1); // Tile 2 (top right) has nothing to its right
         Assert.False(ws.Perform(GlideAction.ConsumeOrExpelRight));
         Assert.Equal([[1], [2], [3]], Layout(ws.Strip));
+        Assert.False(Make(1).Perform(GlideAction.ConsumeOrExpelLeft));
+        var alone = Make(1);
+        Assert.False(alone.Perform(GlideAction.ConsumeOrExpelLeft));
+        Assert.False(alone.Perform(GlideAction.ConsumeOrExpelRight));
+        Assert.Equal([[1]], Layout(alone.Strip));
+    }
+
+    [Fact]
+    public void ExpelFromATabGroupMakesANewTileOnThatSide()
+    {
+        var ws = new Workspace(new Strip([Col([1, 2, 3], focusedRow: 1, isTabbed: true), Col([4])]), Viewport) { LayoutOverride = LayoutMode.Tiled };
+        Assert.True(ws.Perform(GlideAction.ConsumeOrExpelRight));
+        Assert.Equal([[1, 3], [2], [4]], Layout(ws.Strip));
+        Assert.Equal(2, ws.Strip.FocusedWindow);
+        Assert.Equal(3, ws.Placements().Count(p => p.Visibility == Visibility.Visible));
+        Assert.True(ws.Strip.Columns[0].IsTabbed);
+        Assert.False(ws.Strip.Columns[1].IsTabbed);
+        Assert.Equal(Visibility.Visible, PlacementMap(ws)[2].Visibility);
+    }
+
+    [Fact]
+    public void ExpelToTheLeftAndConsumeBackRoundTrips()
+    {
+        var ws = new Workspace(new Strip([Col([1, 2], focusedRow: 1, isTabbed: true), Col([3])], focusedColumnIndex: 0), Viewport) { LayoutOverride = LayoutMode.Tiled };
+        Assert.True(ws.Perform(GlideAction.ConsumeOrExpelRight));
+        Assert.Equal([[1], [2], [3]], Layout(ws.Strip));
+        Assert.True(ws.Perform(GlideAction.ConsumeOrExpelLeft));
+        Assert.Equal([[1, 2], [3]], Layout(ws.Strip));
+        Assert.Equal(2, ws.Strip.FocusedWindow);
+        Assert.True(ws.Strip.Columns[0].IsTabbed);
     }
 
     [Fact]
