@@ -32,8 +32,8 @@ public static partial class Strings
         ["Center Column"] = "Centralizar coluna",
         ["Focus Previous Workspace"] = "Ir ao espaço de trabalho anterior",
         ["Focus Next Workspace"] = "Ir ao próximo espaço de trabalho",
-        ["Move Column to Previous Workspace"] = "Mover coluna ao espaço de trabalho anterior",
-        ["Move Column to Next Workspace"] = "Mover coluna ao próximo espaço de trabalho",
+        ["Move Window to Previous Workspace"] = "Mover janela ao espaço de trabalho anterior",
+        ["Move Window to Next Workspace"] = "Mover janela ao próximo espaço de trabalho",
         ["Show or Hide Overview"] = "Mostrar ou ocultar a visão geral",
         ["Toggle Floating"] = "Alternar janela flutuante",
         ["Enable or Disable Tiling"] = "Ativar ou desativar o mosaico",
@@ -43,10 +43,10 @@ public static partial class Strings
         ["Move Column to Monitor Right"] = "Mover coluna para o monitor à direita",
         ["Show All Shortcuts"] = "Mostrar todos os atalhos",
         ["Switch Between Scrolling and Tiled"] = "Alternar entre rolagem e mosaico",
-        ["Move Column to Workspace {0}"] = "Mover coluna ao espaço de trabalho {0}",
+        ["Move Window to Workspace {0}"] = "Mover janela ao espaço de trabalho {0}",
         ["Focus Workspace {0}"] = "Ir ao espaço de trabalho {0}",
         ["Focus Workspace 1…9"] = "Ir ao espaço de trabalho 1…9",
-        ["Move Column to Workspace 1…9"] = "Mover coluna ao espaço de trabalho 1…9",
+        ["Move Window to Workspace 1…9"] = "Mover janela ao espaço de trabalho 1…9",
         ["Focus"] = "Foco",
         ["Move"] = "Mover",
         ["Columns"] = "Colunas",
@@ -102,7 +102,7 @@ public static partial class Strings
         ["Tiling off"] = "Mosaico desativado",
 
         // On-screen workspace display
-        ["Column sent to workspace {0}"] = "Coluna enviada ao espaço de trabalho {0}",
+        ["Window sent to workspace {0}"] = "Janela enviada ao espaço de trabalho {0}",
         ["Workspace {0} is empty"] = "O espaço de trabalho {0} está vazio",
         ["Workspace {0}"] = "Espaço de trabalho {0}",
 

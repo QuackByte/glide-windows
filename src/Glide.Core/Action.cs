@@ -91,8 +91,8 @@ public static class GlideActions
         GlideAction.CenterColumn => T("Center Column"),
         GlideAction.FocusPreviousWorkspace => T("Focus Previous Workspace"),
         GlideAction.FocusNextWorkspace => T("Focus Next Workspace"),
-        GlideAction.MoveColumnToPreviousWorkspace => T("Move Column to Previous Workspace"),
-        GlideAction.MoveColumnToNextWorkspace => T("Move Column to Next Workspace"),
+        GlideAction.MoveColumnToPreviousWorkspace => T("Move Window to Previous Workspace"),
+        GlideAction.MoveColumnToNextWorkspace => T("Move Window to Next Workspace"),
         GlideAction.ToggleOverview => T("Show or Hide Overview"),
         GlideAction.ToggleFloating => T("Toggle Floating"),
         GlideAction.ToggleTiling => T("Enable or Disable Tiling"),
@@ -103,7 +103,7 @@ public static class GlideActions
         GlideAction.ShowShortcuts => T("Show All Shortcuts"),
         GlideAction.ToggleLayout => T("Switch Between Scrolling and Tiled"),
         _ when action.WorkspaceCommand() is ({ } target, var moves) && target is WorkspaceTarget.Index(var index) =>
-            moves ? T("Move Column to Workspace {0}", index + 1) : T("Focus Workspace {0}", index + 1),
+            moves ? T("Move Window to Workspace {0}", index + 1) : T("Focus Workspace {0}", index + 1),
         _ => action.ToString(),
     };
 
@@ -131,8 +131,8 @@ public static class GlideActions
         _ => ActionGroup.Workspaces,
     };
 
-    /// <summary>Where a workspace action goes, and whether it takes the focused column along.</summary>
-    public static (WorkspaceTarget Target, bool MovesColumn)? WorkspaceCommand(this GlideAction action) => action switch
+    /// <summary>Where a workspace action goes, and whether it sends the focused window there (else it just switches).</summary>
+    public static (WorkspaceTarget Target, bool MovesWindow)? WorkspaceCommand(this GlideAction action) => action switch
     {
         GlideAction.FocusPreviousWorkspace => (new WorkspaceTarget.Previous(), false),
         GlideAction.FocusNextWorkspace => (new WorkspaceTarget.Next(), false),

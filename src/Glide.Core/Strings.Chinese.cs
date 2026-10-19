@@ -33,8 +33,8 @@ public static partial class Strings
         ["Center Column"] = "居中列",
         ["Focus Previous Workspace"] = "前往上一个工作区",
         ["Focus Next Workspace"] = "前往下一个工作区",
-        ["Move Column to Previous Workspace"] = "将列移到上一个工作区",
-        ["Move Column to Next Workspace"] = "将列移到下一个工作区",
+        ["Move Window to Previous Workspace"] = "将窗口移到上一个工作区",
+        ["Move Window to Next Workspace"] = "将窗口移到下一个工作区",
         ["Show or Hide Overview"] = "显示或隐藏概览",
         ["Toggle Floating"] = "切换浮动",
         ["Enable or Disable Tiling"] = "启用或停用平铺",
@@ -44,10 +44,10 @@ public static partial class Strings
         ["Move Column to Monitor Right"] = "将列移到右侧的显示器",
         ["Show All Shortcuts"] = "显示所有快捷键",
         ["Switch Between Scrolling and Tiled"] = "在滚动与平铺布局之间切换",
-        ["Move Column to Workspace {0}"] = "将列移到工作区 {0}",
+        ["Move Window to Workspace {0}"] = "将窗口移到工作区 {0}",
         ["Focus Workspace {0}"] = "前往工作区 {0}",
         ["Focus Workspace 1…9"] = "前往工作区 1…9",
-        ["Move Column to Workspace 1…9"] = "将列移到工作区 1…9",
+        ["Move Window to Workspace 1…9"] = "将窗口移到工作区 1…9",
         ["Focus"] = "焦点",
         ["Move"] = "移动",
         ["Columns"] = "列",
@@ -103,7 +103,7 @@ public static partial class Strings
         ["Tiling off"] = "平铺已关闭",
 
         // On-screen workspace display
-        ["Column sent to workspace {0}"] = "已将列移到工作区 {0}",
+        ["Window sent to workspace {0}"] = "已将窗口移到工作区 {0}",
         ["Workspace {0} is empty"] = "工作区 {0} 为空",
         ["Workspace {0}"] = "工作区 {0}",
 

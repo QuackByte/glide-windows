@@ -34,8 +34,8 @@ public static partial class Strings
         ["Center Column"] = "列を中央に配置",
         ["Focus Previous Workspace"] = "前のワークスペースに移動",
         ["Focus Next Workspace"] = "次のワークスペースに移動",
-        ["Move Column to Previous Workspace"] = "列を前のワークスペースへ移動",
-        ["Move Column to Next Workspace"] = "列を次のワークスペースへ移動",
+        ["Move Window to Previous Workspace"] = "ウィンドウを前のワークスペースへ移動",
+        ["Move Window to Next Workspace"] = "ウィンドウを次のワークスペースへ移動",
         ["Show or Hide Overview"] = "オーバービューの表示/非表示",
         ["Toggle Floating"] = "フローティングの切り替え",
         ["Enable or Disable Tiling"] = "タイル表示のオン/オフ",
@@ -45,10 +45,10 @@ public static partial class Strings
         ["Move Column to Monitor Right"] = "列を右のモニターへ移動",
         ["Show All Shortcuts"] = "すべてのショートカットを表示",
         ["Switch Between Scrolling and Tiled"] = "スクロールとタイルを切り替え",
-        ["Move Column to Workspace {0}"] = "列をワークスペース{0}へ移動",
+        ["Move Window to Workspace {0}"] = "ウィンドウをワークスペース{0}へ移動",
         ["Focus Workspace {0}"] = "ワークスペース{0}に移動",
         ["Focus Workspace 1…9"] = "ワークスペース1…9に移動",
-        ["Move Column to Workspace 1…9"] = "列をワークスペース1…9へ移動",
+        ["Move Window to Workspace 1…9"] = "ウィンドウをワークスペース1…9へ移動",
         ["Focus"] = "フォーカス",
         ["Move"] = "移動",
         ["Columns"] = "列",
@@ -104,7 +104,7 @@ public static partial class Strings
         ["Tiling off"] = "タイル表示オフ",
 
         // On-screen workspace display
-        ["Column sent to workspace {0}"] = "列をワークスペース{0}に送りました",
+        ["Window sent to workspace {0}"] = "ウィンドウをワークスペース{0}に送りました",
         ["Workspace {0} is empty"] = "ワークスペース{0}は空です",
         ["Workspace {0}"] = "ワークスペース{0}",
 

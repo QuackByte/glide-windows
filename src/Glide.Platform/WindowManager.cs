@@ -364,9 +364,9 @@ internal sealed class WindowManager : IDisposable
         Log.Debug($"Action {action}");
         SyncFocusFromForeground();
 
-        if (action.WorkspaceCommand() is var (target, movesColumn))
+        if (action.WorkspaceCommand() is var (target, movesWindow))
         {
-            PerformWorkspace(target, movesColumn);
+            PerformWorkspace(target, movesWindow);
             return;
         }
         switch (action)
@@ -414,16 +414,16 @@ internal sealed class WindowManager : IDisposable
         }
     }
 
-    private void PerformWorkspace(WorkspaceTarget target, bool movesColumn)
+    private void PerformWorkspace(WorkspaceTarget target, bool movesWindow)
     {
         if (spaces.Resolve(target) is not int index) return;
-        if (movesColumn)
+        if (movesWindow)
         {
-            if (!spaces.MoveFocusedColumn(index)) return;
-            Log.Info($"Moved column to workspace {index + 1}");
+            if (!spaces.MoveFocusedWindow(index)) return;
+            Log.Info($"Moved window to workspace {index + 1}");
             Layout();
             FocusActive();
-            Announce(T("Column sent to workspace {0}", index + 1));
+            Announce(T("Window sent to workspace {0}", index + 1));
         }
         else
         {

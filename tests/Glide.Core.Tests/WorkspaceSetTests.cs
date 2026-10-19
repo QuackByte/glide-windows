@@ -47,31 +47,72 @@ public class WorkspaceSetTests
     }
 
     [Fact]
-    public void MoveFocusedColumnKeepsTheActiveWorkspace()
+    public void MoveFocusedWindowKeepsTheActiveWorkspace()
     {
         var set = Make();
-        Assert.True(set.MoveFocusedColumn(2));
+        Assert.True(set.MoveFocusedWindow(2));
         Assert.Equal(0, set.ActiveIndex);
         Assert.Equal([1, 3], Ids(set.Active.Strip.Windows));
         Assert.Equal(1, set.Active.Strip.FocusedWindow); // Focus falls to the left neighbour
         Assert.Equal([2], Ids(set.Workspaces[2].Strip.Windows));
         Assert.Equal(2, set.Workspaces[2].Strip.FocusedWindow);
         Assert.Equal([0, 2], set.Occupied);
-        Assert.False(set.MoveFocusedColumn(0)); // Same workspace
+        Assert.False(set.MoveFocusedWindow(0)); // Same workspace
     }
 
     [Fact]
-    public void MovedColumnKeepsStackTabsAndWidth()
+    public void AWindowAloneInItsColumnKeepsTheColumnsWidth()
     {
         var set = new WorkspaceSet(Viewport);
-        set.Active.Strip = new Strip([Col([1, 2], focusedRow: 1, widthIndex: 2, isTabbed: true)]);
-        set.MoveFocusedColumn(1);
-        Assert.Equal([Col([1, 2], focusedRow: 1, widthIndex: 2, isTabbed: true)], set.Workspaces[1].Strip.Columns);
-        Assert.False(set.MoveFocusedColumn(3)); // Nothing left to move
+        set.Active.Strip = new Strip([Col([1], widthIndex: 2), Col([2])]);
+        Assert.True(set.MoveFocusedWindow(1));
+        Assert.Equal([Col([1], widthIndex: 2)], set.Workspaces[1].Strip.Columns);
+        Assert.Equal([[2]], Layout(set.Active.Strip));
     }
 
     [Fact]
-    public void MovedColumnLandsRightOfTheTargetsFocusedColumn()
+    public void OnlyTheFocusedWindowLeavesItsStack()
+    {
+        var set = new WorkspaceSet(Viewport);
+        set.Active.Strip = new Strip([Col([1, 2, 3], focusedRow: 1, widthIndex: 2)]);
+        Assert.True(set.MoveFocusedWindow(4));
+        Assert.Equal(0, set.ActiveIndex);
+        Assert.Equal([[1, 3]], Layout(set.Active.Strip));
+        Assert.Equal(2, set.Active.Strip.Columns[0].WidthIndex);
+        Assert.Equal(3, set.Active.Strip.FocusedWindow); // The next window in the stack
+        // On its own in a new column, with the default width.
+        Assert.Equal([Col([2], widthIndex: set.Settings.DefaultWidthIndex)], set.Workspaces[4].Strip.Columns);
+        Assert.Equal(2, set.Workspaces[4].Strip.FocusedWindow);
+        Assert.Equal(4, set.IndexOf(2));
+    }
+
+    [Fact]
+    public void AWindowTakenFromATabbedColumnLeavesTheOtherTabs()
+    {
+        var set = new WorkspaceSet(Viewport);
+        set.Active.Strip = new Strip([Col([1, 2], focusedRow: 1, isTabbed: true)]);
+        set.MoveFocusedWindow(1);
+        Assert.Equal([[1]], Layout(set.Active.Strip));
+        Assert.True(set.Active.Strip.Columns[0].IsTabbed);
+        Assert.Equal([[2]], Layout(set.Workspaces[1].Strip));
+        Assert.False(set.Workspaces[1].Strip.Columns[0].IsTabbed);
+        Assert.True(set.MoveFocusedWindow(2));
+        Assert.True(set.Active.Strip.IsEmpty);
+        Assert.False(set.MoveFocusedWindow(3)); // Nothing left to move
+    }
+
+    [Fact]
+    public void AMovedWindowTakesItsLearnedMinimumWidth()
+    {
+        var set = Make();
+        set.Active.MinimumWidths[2] = 700;
+        set.MoveFocusedWindow(1);
+        Assert.False(set.Active.MinimumWidths.ContainsKey(2));
+        Assert.Equal(700, set.Workspaces[1].MinimumWidths[2]);
+    }
+
+    [Fact]
+    public void MovedWindowLandsRightOfTheTargetsFocusedColumn()
     {
         var set = Make();
         set.Activate(1);
@@ -79,7 +120,7 @@ public class WorkspaceSetTests
         set.Active.Strip.Insert(11, widthIndex: 1);
         set.Active.Strip.Focus(10);
         set.Activate(0);
-        set.MoveFocusedColumn(1);
+        set.MoveFocusedWindow(1);
         Assert.Equal([10, 2, 11], Ids(set.Workspaces[1].Strip.Windows));
     }
 
@@ -87,7 +128,7 @@ public class WorkspaceSetTests
     public void RemoveFindsTheWindowOnAnyWorkspace()
     {
         var set = Make();
-        set.MoveFocusedColumn(5);
+        set.MoveFocusedWindow(5);
         Assert.Equal(5, set.IndexOf(2));
         Assert.Equal(5, set.Remove(2));
         Assert.Null(set.IndexOf(2));
@@ -107,7 +148,7 @@ public class WorkspaceSetTests
     public void SnapshotRestoresEveryWorkspace()
     {
         var set = Make();
-        set.MoveFocusedColumn(3);
+        set.MoveFocusedWindow(3);
         set.Activate(3);
         var decoded = RoundTrip(new StripSnapshot(set, [], [], DateTimeOffset.UnixEpoch));
         Assert.Equal([1, 3, 2], Ids(decoded.AllWindows));
@@ -140,7 +181,7 @@ public class WorkspaceSetTests
     public void WorkspaceActionsAndDefaults()
     {
         Assert.Equal(new WorkspaceTarget.Index(2), GlideAction.FocusWorkspace3.WorkspaceCommand()?.Target);
-        Assert.Equal(true, GlideAction.MoveColumnToWorkspace9.WorkspaceCommand()?.MovesColumn);
+        Assert.Equal(true, GlideAction.MoveColumnToWorkspace9.WorkspaceCommand()?.MovesWindow);
         Assert.Equal(new WorkspaceTarget.Next(), GlideAction.FocusNextWorkspace.WorkspaceCommand()?.Target);
         Assert.Null(GlideAction.FocusColumnLeft.WorkspaceCommand());
         Assert.Equal(23, GlideActions.All.Count(a => a.Group() == ActionGroup.Workspaces));
@@ -198,7 +239,7 @@ public class DepartureTests
     public void ReturnsToItsOwnWorkspace()
     {
         var set = Make();
-        set.MoveFocusedColumn(4);
+        set.MoveFocusedWindow(4);
         var departure = set.DepartureOf(1)!;
         set.Remove(1);
         Assert.Equal(4, set.Rejoin(1, departure, focus: false));

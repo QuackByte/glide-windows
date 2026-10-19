@@ -34,8 +34,8 @@ public static partial class Strings
         ["Center Column"] = "열 가운데 맞춤",
         ["Focus Previous Workspace"] = "이전 워크스페이스로 이동",
         ["Focus Next Workspace"] = "다음 워크스페이스로 이동",
-        ["Move Column to Previous Workspace"] = "열을 이전 워크스페이스로 이동",
-        ["Move Column to Next Workspace"] = "열을 다음 워크스페이스로 이동",
+        ["Move Window to Previous Workspace"] = "창을 이전 워크스페이스로 이동",
+        ["Move Window to Next Workspace"] = "창을 다음 워크스페이스로 이동",
         ["Show or Hide Overview"] = "개요 보기 또는 가리기",
         ["Toggle Floating"] = "플로팅 전환",
         ["Enable or Disable Tiling"] = "타일링 켜기 또는 끄기",
@@ -45,10 +45,10 @@ public static partial class Strings
         ["Move Column to Monitor Right"] = "열을 오른쪽 모니터로 이동",
         ["Show All Shortcuts"] = "모든 단축키 보기",
         ["Switch Between Scrolling and Tiled"] = "스크롤과 타일 전환",
-        ["Move Column to Workspace {0}"] = "열을 워크스페이스 {0}(으)로 이동",
+        ["Move Window to Workspace {0}"] = "창을 워크스페이스 {0}(으)로 이동",
         ["Focus Workspace {0}"] = "워크스페이스 {0}(으)로 이동",
         ["Focus Workspace 1…9"] = "워크스페이스 1…9로 이동",
-        ["Move Column to Workspace 1…9"] = "열을 워크스페이스 1…9로 이동",
+        ["Move Window to Workspace 1…9"] = "창을 워크스페이스 1…9로 이동",
         ["Focus"] = "포커스",
         ["Move"] = "이동",
         ["Columns"] = "열",
@@ -104,7 +104,7 @@ public static partial class Strings
         ["Tiling off"] = "타일링 꺼짐",
 
         // On-screen workspace display
-        ["Column sent to workspace {0}"] = "열을 워크스페이스 {0}(으)로 보냈습니다",
+        ["Window sent to workspace {0}"] = "창을 워크스페이스 {0}(으)로 보냈습니다",
         ["Workspace {0} is empty"] = "워크스페이스 {0}이(가) 비어 있습니다",
         ["Workspace {0}"] = "워크스페이스 {0}",
 

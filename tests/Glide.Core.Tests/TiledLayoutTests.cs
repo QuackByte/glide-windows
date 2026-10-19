@@ -199,7 +199,7 @@ public class TiledLayoutTests
         var set = new WorkspaceSet(Viewport);
         set.Insert(1, 1);
         set.Active.ToggleLayout();
-        set.MoveFocusedColumn(1);
+        set.MoveFocusedWindow(1);
         Assert.Equal(LayoutMode.Tiled, set.Workspaces[0].LayoutOverride);
         Assert.Null(set.Workspaces[1].LayoutOverride);
     }

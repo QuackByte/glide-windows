@@ -122,6 +122,20 @@ public sealed class Strip : IEquatable<Strip>
         return column;
     }
 
+    /// <summary>
+    /// Takes just the focused window out. A window alone in its column leaves with the column (and its
+    /// width); one that shares a column leaves it to the others, as a new column of
+    /// <paramref name="widthIndex"/>. Focus moves as it does when a window closes.
+    /// </summary>
+    public Column? RemoveFocusedWindow(int widthIndex)
+    {
+        if (FocusedColumn is not { } column) return null;
+        if (column.windowList.Count == 1) return RemoveFocusedColumn();
+        var window = column.FocusedWindow;
+        Remove(window);
+        return new Column([window], widthIndex: widthIndex);
+    }
+
     /// <summary>Removes a window. An emptied column disappears and focus moves to its left neighbour.</summary>
     public bool Remove(WindowId window)
     {

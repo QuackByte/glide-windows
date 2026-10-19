@@ -29,8 +29,8 @@ public static partial class Strings
         ["Center Column"] = "Centrar columna",
         ["Focus Previous Workspace"] = "Ir al escritorio anterior",
         ["Focus Next Workspace"] = "Ir al escritorio siguiente",
-        ["Move Column to Previous Workspace"] = "Mover columna al escritorio anterior",
-        ["Move Column to Next Workspace"] = "Mover columna al escritorio siguiente",
+        ["Move Window to Previous Workspace"] = "Mover ventana al escritorio anterior",
+        ["Move Window to Next Workspace"] = "Mover ventana al escritorio siguiente",
         ["Show or Hide Overview"] = "Mostrar u ocultar la vista general",
         ["Toggle Floating"] = "Activar o desactivar flotante",
         ["Enable or Disable Tiling"] = "Activar o desactivar el mosaico",
@@ -40,10 +40,10 @@ public static partial class Strings
         ["Move Column to Monitor Right"] = "Mover columna al monitor de la derecha",
         ["Show All Shortcuts"] = "Mostrar todos los atajos",
         ["Switch Between Scrolling and Tiled"] = "Cambiar entre desplazable y mosaico",
-        ["Move Column to Workspace {0}"] = "Mover columna al escritorio {0}",
+        ["Move Window to Workspace {0}"] = "Mover ventana al escritorio {0}",
         ["Focus Workspace {0}"] = "Ir al escritorio {0}",
         ["Focus Workspace 1…9"] = "Ir al escritorio 1…9",
-        ["Move Column to Workspace 1…9"] = "Mover columna al escritorio 1…9",
+        ["Move Window to Workspace 1…9"] = "Mover ventana al escritorio 1…9",
         ["Focus"] = "Foco",
         ["Move"] = "Mover",
         ["Columns"] = "Columnas",
@@ -99,7 +99,7 @@ public static partial class Strings
         ["Tiling off"] = "Mosaico desactivado",
 
         // On-screen workspace display
-        ["Column sent to workspace {0}"] = "Columna enviada al escritorio {0}",
+        ["Window sent to workspace {0}"] = "Ventana enviada al escritorio {0}",
         ["Workspace {0} is empty"] = "El escritorio {0} está vacío",
         ["Workspace {0}"] = "Escritorio {0}",
 

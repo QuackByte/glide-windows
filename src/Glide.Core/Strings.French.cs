@@ -34,8 +34,8 @@ public static partial class Strings
         ["Center Column"] = "Centrer la colonne",
         ["Focus Previous Workspace"] = "Aller au bureau précédent",
         ["Focus Next Workspace"] = "Aller au bureau suivant",
-        ["Move Column to Previous Workspace"] = "Déplacer la colonne vers le bureau précédent",
-        ["Move Column to Next Workspace"] = "Déplacer la colonne vers le bureau suivant",
+        ["Move Window to Previous Workspace"] = "Déplacer la fenêtre vers le bureau précédent",
+        ["Move Window to Next Workspace"] = "Déplacer la fenêtre vers le bureau suivant",
         ["Show or Hide Overview"] = "Afficher ou masquer la vue d’ensemble",
         ["Toggle Floating"] = "Basculer en fenêtre flottante",
         ["Enable or Disable Tiling"] = "Activer ou désactiver la mosaïque",
@@ -45,10 +45,10 @@ public static partial class Strings
         ["Move Column to Monitor Right"] = "Déplacer la colonne vers l’écran de droite",
         ["Show All Shortcuts"] = "Afficher tous les raccourcis",
         ["Switch Between Scrolling and Tiled"] = "Basculer entre défilement et mosaïque",
-        ["Move Column to Workspace {0}"] = "Déplacer la colonne vers le bureau {0}",
+        ["Move Window to Workspace {0}"] = "Déplacer la fenêtre vers le bureau {0}",
         ["Focus Workspace {0}"] = "Aller au bureau {0}",
         ["Focus Workspace 1…9"] = "Aller au bureau 1…9",
-        ["Move Column to Workspace 1…9"] = "Déplacer la colonne vers le bureau 1…9",
+        ["Move Window to Workspace 1…9"] = "Déplacer la fenêtre vers le bureau 1…9",
         ["Focus"] = "Focus",
         ["Move"] = "Déplacer",
         ["Columns"] = "Colonnes",
@@ -104,7 +104,7 @@ public static partial class Strings
         ["Tiling off"] = "Mosaïque désactivée",
 
         // On-screen workspace display
-        ["Column sent to workspace {0}"] = "Colonne envoyée au bureau {0}",
+        ["Window sent to workspace {0}"] = "Fenêtre envoyée au bureau {0}",
         ["Workspace {0} is empty"] = "Le bureau {0} est vide",
         ["Workspace {0}"] = "Bureau {0}",
 

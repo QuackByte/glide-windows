@@ -34,8 +34,8 @@ public static partial class Strings
         ["Center Column"] = "Spalte zentrieren",
         ["Focus Previous Workspace"] = "Zum vorherigen Arbeitsbereich",
         ["Focus Next Workspace"] = "Zum nächsten Arbeitsbereich",
-        ["Move Column to Previous Workspace"] = "Spalte in vorherigen Arbeitsbereich verschieben",
-        ["Move Column to Next Workspace"] = "Spalte in nächsten Arbeitsbereich verschieben",
+        ["Move Window to Previous Workspace"] = "Fenster in vorherigen Arbeitsbereich verschieben",
+        ["Move Window to Next Workspace"] = "Fenster in nächsten Arbeitsbereich verschieben",
         ["Show or Hide Overview"] = "Übersicht ein- oder ausblenden",
         ["Toggle Floating"] = "Schweben umschalten",
         ["Enable or Disable Tiling"] = "Kacheln ein- oder ausschalten",
@@ -45,10 +45,10 @@ public static partial class Strings
         ["Move Column to Monitor Right"] = "Spalte auf rechten Monitor verschieben",
         ["Show All Shortcuts"] = "Alle Tastenkürzel anzeigen",
         ["Switch Between Scrolling and Tiled"] = "Zwischen Scrollen und Kacheln wechseln",
-        ["Move Column to Workspace {0}"] = "Spalte in Arbeitsbereich {0} verschieben",
+        ["Move Window to Workspace {0}"] = "Fenster in Arbeitsbereich {0} verschieben",
         ["Focus Workspace {0}"] = "Zu Arbeitsbereich {0}",
         ["Focus Workspace 1…9"] = "Zu Arbeitsbereich 1…9",
-        ["Move Column to Workspace 1…9"] = "Spalte in Arbeitsbereich 1…9 verschieben",
+        ["Move Window to Workspace 1…9"] = "Fenster in Arbeitsbereich 1…9 verschieben",
         ["Focus"] = "Fokus",
         ["Move"] = "Verschieben",
         ["Columns"] = "Spalten",
@@ -104,7 +104,7 @@ public static partial class Strings
         ["Tiling off"] = "Kacheln aus",
 
         // On-screen workspace display
-        ["Column sent to workspace {0}"] = "Spalte an Arbeitsbereich {0} gesendet",
+        ["Window sent to workspace {0}"] = "Fenster an Arbeitsbereich {0} gesendet",
         ["Workspace {0} is empty"] = "Arbeitsbereich {0} ist leer",
         ["Workspace {0}"] = "Arbeitsbereich {0}",
 
