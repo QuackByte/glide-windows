@@ -105,8 +105,11 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     /// </summary>
     public IReadOnlyList<double>? TiledRatios { get; set; }
 
-    /// <summary>The window whose tile fills the screen (tiled "full width"); only counts while that tile has focus.</summary>
-    public WindowId? ZoomedWindow { get; private set; }
+    /// <summary>
+    /// Tiled full screen ("full width" on a tiled workspace): every tile fills the screen, stacked, and
+    /// focus moves through them in the usual order, the focused one on top. Lasts until toggled off.
+    /// </summary>
+    public bool IsZoomed { get; private set; }
 
     /// <summary>The window whose learned minimum width stopped the last width change short, so the user can be told why; null if none did.</summary>
     public WindowId? MinimumLimit { get; private set; }
@@ -121,7 +124,7 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
         if (Layout == LayoutMode.Scrolling)
         {
             Strip.ResetWidths(Settings.DefaultWidthIndex);
-            ZoomedWindow = null;
+            IsZoomed = false;
         }
         SettleScroll();
     }
@@ -193,14 +196,12 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
 
     /// <summary>
     /// Tiled workspaces don't scroll: everything is on screen. They keep one tile per column
-    /// instead (a window dropped onto another's column becomes the next tile) and forget a zoom
-    /// whose window has gone.
+    /// instead (a window dropped onto another's column becomes the next tile).
     /// </summary>
     private void KeepTiledShape()
     {
         Strip.ExplodeStacks();
         ScrollOffset = 0;
-        if (ZoomedWindow is { } zoomed && !Strip.Contains(zoomed)) ZoomedWindow = null;
     }
 
     /// <summary>Scrolls as little as possible to bring the focused column fully on screen.</summary>
@@ -402,7 +403,7 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
         }
         var tiles = Tiles();
         var index = tiles.FindIndex(t => TileWindows(t).Contains(window));
-        if (index < 0 || ZoomedWindow is not null) return false;
+        if (index < 0 || IsZoomed) return false;
         var count = tiles.Count;
         if (TiledLayout.SizingSplit(index, count, TiledColumns) is not { } sizing) return false;
         var splits = TiledLayout.Splits(Viewport, count, TiledColumns, Settings.Gap, FittedRatios(tiles));
@@ -466,14 +467,6 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
         TiledLayout.FitMinimums(Viewport, tiles.Count, TiledColumns, Settings.Gap, EffectiveRatios(tiles.Count), tiles.Select(MinimumOf).ToList())
         ?? EffectiveRatios(tiles.Count);
 
-    /// <summary>The tile holding the zoomed window, while it has focus.</summary>
-    private int? ZoomedTile(IReadOnlyList<Tile> tiles)
-    {
-        if (ZoomedWindow is not { } zoomed || Strip.FocusedColumn is not { } focused || !focused.Windows.Contains(zoomed)) return null;
-        var index = tiles.ToList().FindIndex(t => t.Column == Strip.FocusedColumnIndex && (t.Row is null || focused.Windows[t.Row.Value] == zoomed));
-        return index < 0 ? null : index;
-    }
-
     /// <summary>
     /// Every tile's frame as the spiral lays it out, with the splits fitted to minimum widths but
     /// before zoom: what focus and move go by, and what the ratios shape.
@@ -484,10 +477,15 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     /// <summary>
     /// The frames tiles are sent to. A tile narrower than a window in it allows gets that window's
     /// minimum width within its own x, overlapping its neighbour; that only happens when the minimums
-    /// can't all fit (see <see cref="FittedRatios"/>). A zoomed tile fills the screen.
+    /// can't all fit (see <see cref="FittedRatios"/>). Zoomed, every tile fills the screen.
     /// </summary>
     private List<Rect> PlacedFrames(IReadOnlyList<Tile> tiles)
     {
+        if (IsZoomed)
+        {
+            var screen = new Rect(Viewport.MinX + Settings.Gap, Viewport.MinY + Settings.Gap, UsableWidth, Math.Max(Viewport.Height - 2 * Settings.Gap, 0));
+            return [.. Enumerable.Repeat(screen, tiles.Count)];
+        }
         var frames = TileFrames(tiles);
         var right = Viewport.MaxX - Settings.Gap;
         for (var index = 0; index < frames.Count; index++)
@@ -497,8 +495,6 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
             var width = Math.Min(minimum, UsableWidth);
             frames[index] = frames[index] with { X = Math.Min(frames[index].X, Math.Max(right - width, Viewport.MinX + Settings.Gap)), Width = width };
         }
-        if (ZoomedTile(tiles) is int zoomed)
-            frames[zoomed] = new Rect(Viewport.MinX + Settings.Gap, Viewport.MinY + Settings.Gap, UsableWidth, Math.Max(Viewport.Height - 2 * Settings.Gap, 0));
         return frames;
     }
 
@@ -507,10 +503,7 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     {
         KeepTiledShape();
         if (Strip.IsEmpty) return action is GlideAction.ToggleLayout or GlideAction.ToggleTabbed or GlideAction.CenterColumn ? null : false;
-        var changed = PerformTiledAction(action);
-        // A zoom ends when focus leaves its tile.
-        if (ZoomedWindow is { } zoomed && Strip.FocusedColumn?.Windows.Contains(zoomed) != true) ZoomedWindow = null;
-        return changed;
+        return PerformTiledAction(action);
     }
 
     private bool? PerformTiledAction(GlideAction action)
@@ -529,10 +522,11 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
             case GlideAction.FocusLastColumn: return Strip.FocusLastColumn();
             case GlideAction.ConsumeOrExpelLeft: return ConsumeOrExpelTile(HorizontalDirection.Left);
             case GlideAction.ConsumeOrExpelRight: return ConsumeOrExpelTile(HorizontalDirection.Right);
-            case GlideAction.CycleColumnWidth: return CycleTiledRatio(forward: true);
-            case GlideAction.CycleColumnWidthBackward: return CycleTiledRatio(forward: false);
+            // Zoomed, the splits don't show, so there is nothing to see change.
+            case GlideAction.CycleColumnWidth: return !IsZoomed && CycleTiledRatio(forward: true);
+            case GlideAction.CycleColumnWidthBackward: return !IsZoomed && CycleTiledRatio(forward: false);
             case GlideAction.ToggleFullWidth:
-                ZoomedWindow = ZoomedTile(Tiles()) is null ? Strip.FocusedWindow : null;
+                IsZoomed = !IsZoomed;
                 return true;
             default: return null;
         }
@@ -698,7 +692,8 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
             for (var index = 0; index < tiles.Count; index++)
             {
                 var column = Strip.Columns[tiles[index].Column];
-                if (!column.IsTabbed) continue;
+                // Zoomed, the tiles are stacked and only the focused one shows.
+                if (!column.IsTabbed || (IsZoomed && tiles[index].Column != Strip.FocusedColumnIndex)) continue;
                 var frame = new Rect(frames[index].X, frames[index].Y, frames[index].Width, Settings.TabBarHeight);
                 result.Add(new TabBarPlacement(tiles[index].Column, frame, [.. column.Windows], column.FocusedRow));
             }
