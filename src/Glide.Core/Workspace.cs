@@ -508,6 +508,7 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
 
     private bool? PerformTiledAction(GlideAction action)
     {
+        if (IsZoomed && PerformZoomed(action) is bool zoomedChange) return zoomedChange;
         switch (action)
         {
             case GlideAction.FocusColumnLeft: return FocusTile(TileSide.Left);
@@ -554,6 +555,30 @@ public sealed class Workspace(Strip? strip, Rect viewport, LayoutSettings? setti
     /// <summary>Switches to the tab above or below in a focused tab group. False if the tile isn't tabbed or has no tab that way.</summary>
     private bool FocusTab(VerticalDirection direction) =>
         Strip.FocusedColumn is { IsTabbed: true } && Strip.FocusWindow(direction);
+
+    /// <summary>
+    /// Zoomed, only the focused window shows, so the arrows go in order rather than by where tiles sit
+    /// underneath: Right and Up to the next window, tabs included, Left and Down to the one before,
+    /// wrapping around; with Shift they move the focused tile one place. Null for other actions.
+    /// </summary>
+    private bool? PerformZoomed(GlideAction action) => action switch
+    {
+        GlideAction.FocusColumnRight or GlideAction.FocusWindowUp => FocusInOrder(forward: true),
+        GlideAction.FocusColumnLeft or GlideAction.FocusWindowDown => FocusInOrder(forward: false),
+        GlideAction.MoveColumnRight or GlideAction.MoveWindowUp => Strip.MoveColumn(HorizontalDirection.Right),
+        GlideAction.MoveColumnLeft or GlideAction.MoveWindowDown => Strip.MoveColumn(HorizontalDirection.Left),
+        _ => null,
+    };
+
+    /// <summary>Focuses the next or previous window in tile order, a tab group's tabs in turn, wrapping around.</summary>
+    private bool FocusInOrder(bool forward)
+    {
+        var windows = Strip.Windows;
+        if (windows.Count < 2 || Strip.FocusedWindow is not { } focused) return false;
+        var index = windows.ToList().IndexOf(focused);
+        if (index < 0) return false;
+        return Strip.Focus(windows[(index + (forward ? 1 : windows.Count - 1)) % windows.Count]);
+    }
 
     /// <summary>Moves focus to the tile next to the focused one on a side.</summary>
     private bool FocusTile(TileSide side) =>

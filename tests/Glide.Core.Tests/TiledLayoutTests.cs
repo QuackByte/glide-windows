@@ -445,7 +445,7 @@ public class TiledLayoutTests
     {
         var ws = new Workspace(new Strip([Col([1]), Col([2, 3], isTabbed: true)], focusedColumnIndex: 1), Viewport) { LayoutOverride = LayoutMode.Tiled };
         ws.Perform(GlideAction.ToggleFullWidth);
-        Assert.True(ws.Perform(GlideAction.FocusWindowDown));
+        Assert.True(ws.Perform(GlideAction.FocusWindowUp)); // Zoomed, up is the next window: the next tab
         Assert.Equal(3, ws.TabBars().Single().ActiveWindow);
         Assert.Equal(Visibility.Visible, PlacementMap(ws)[3].Visibility);
         Assert.Equal(1188, Frames(ws)[3].Width);
@@ -593,18 +593,60 @@ public class TiledLayoutTests
     }
 
     [Fact]
-    public void FocusMovesThroughZoomedTilesAndTheZoomStays()
+    public void ZoomedArrowsGoInOrderAndWrapAround()
     {
         var ws = Make(3, focused: 0);
         ws.Perform(GlideAction.ToggleFullWidth);
         Assert.True(ws.Perform(GlideAction.FocusColumnRight));
         Assert.Equal(2, ws.Strip.FocusedWindow);
-        Assert.True(ws.Perform(GlideAction.FocusWindowDown)); // Direction still follows the spiral underneath
+        Assert.True(ws.Perform(GlideAction.FocusWindowUp)); // Up is next too, whatever sits above underneath
         Assert.Equal(3, ws.Strip.FocusedWindow);
-        Assert.True(ws.Perform(GlideAction.FocusFirstColumn));
-        Assert.Equal(1, ws.Strip.FocusedWindow);
+        Assert.True(ws.Perform(GlideAction.FocusColumnRight));
+        Assert.Equal(1, ws.Strip.FocusedWindow); // Past the last, back to the first
+        Assert.True(ws.Perform(GlideAction.FocusWindowDown));
+        Assert.Equal(3, ws.Strip.FocusedWindow); // Down is the one before, wrapping too
+        Assert.True(ws.Perform(GlideAction.FocusColumnLeft));
+        Assert.Equal(2, ws.Strip.FocusedWindow);
         Assert.True(ws.IsZoomed);
         Assert.All(Frames(ws).Values, frame => Assert.Equal(FullScreen, frame));
+    }
+
+    [Fact]
+    public void ZoomedArrowsStepThroughATabGroupsTabs()
+    {
+        var ws = new Workspace(new Strip([Col([1]), Col([2, 3], isTabbed: true), Col([4])]), Viewport) { LayoutOverride = LayoutMode.Tiled };
+        ws.Perform(GlideAction.ToggleFullWidth);
+        var order = new List<long>();
+        for (var i = 0; i < 4; i++)
+        {
+            ws.Perform(GlideAction.FocusColumnRight);
+            order.Add(ws.Strip.FocusedWindow!.Value.Value);
+        }
+        Assert.Equal([2, 3, 4, 1], order);
+    }
+
+    [Fact]
+    public void ZoomedMovesShiftTheTileOnePlaceInOrder()
+    {
+        var ws = Make(3, focused: 0);
+        ws.Perform(GlideAction.ToggleFullWidth);
+        Assert.True(ws.Perform(GlideAction.MoveWindowUp));
+        Assert.Equal([2, 1, 3], ws.Strip.Windows.Select(w => w.Value));
+        Assert.True(ws.Perform(GlideAction.MoveColumnRight));
+        Assert.Equal([2, 3, 1], ws.Strip.Windows.Select(w => w.Value));
+        Assert.False(ws.Perform(GlideAction.MoveColumnRight)); // Moves stop at the ends
+        Assert.True(ws.Perform(GlideAction.MoveWindowDown));
+        Assert.Equal([2, 1, 3], ws.Strip.Windows.Select(w => w.Value));
+        Assert.Equal(1, ws.Strip.FocusedWindow);
+    }
+
+    [Fact]
+    public void UnzoomedArrowsStillGoByDirection()
+    {
+        var ws = Make(3, focused: 1);
+        Assert.True(ws.Perform(GlideAction.FocusWindowDown));
+        Assert.Equal(3, ws.Strip.FocusedWindow);
+        Assert.False(ws.Perform(GlideAction.FocusColumnRight));
     }
 
     [Fact]
@@ -639,7 +681,7 @@ public class TiledLayoutTests
         var ws = new Workspace(new Strip([Col([1, 2], isTabbed: true), Col([3, 4], isTabbed: true)]), Viewport) { LayoutOverride = LayoutMode.Tiled };
         ws.Perform(GlideAction.ToggleFullWidth);
         Assert.Equal([0], ws.TabBars().Select(b => b.Column));
-        ws.Perform(GlideAction.FocusColumnRight);
+        ws.Perform(GlideAction.FocusLastColumn);
         Assert.Equal([1], ws.TabBars().Select(b => b.Column));
     }
 

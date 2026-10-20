@@ -2,6 +2,12 @@
 
 Ce fichier est la traduction française de CHANGELOG.md, qui reste l’original. Il présente les nouveautés de chaque version de Glide pour Windows. Glide affiche les nouvelles entrées une seule fois après une mise à jour, et les notes de chaque version sur GitHub en sont issues.
 
+## 0.11.1 — 2026-10-20
+
+### Modifications
+
+- **En disposition en mosaïque : en plein écran, les flèches parcourent les fenêtres dans l’ordre.** Win+flèche droite et Win+flèche haut passent à la fenêtre suivante, Win+flèche gauche et Win+flèche bas à la précédente, en revenant au début une fois au bout : inutile de retenir où se trouve chaque fenêtre en dessous. Les onglets d’un groupe passent un par un, et avec Maj les flèches déplacent la fenêtre active d’une place.
+
 ## 0.11.0 — 2026-10-20
 
 ### Nouveautés
