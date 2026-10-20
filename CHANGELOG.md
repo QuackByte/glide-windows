@@ -2,6 +2,12 @@
 
 What's new in each version of Glide for Windows. Glide shows the new entries once after it updates, and each release's notes on GitHub come from here, so write for people using Glide. Add an entry for every change worth knowing about under the next version before tagging it, and translate it in each file of `changelog/` (`CHANGELOG.es.md`, `CHANGELOG.fr.md` and so on, same versions, sections and links): Glide shows the notes in its own language, and a test checks they match this file. The GitHub notes stay English.
 
+## 0.11.1 — 2026-10-20
+
+### Changes
+
+- **In the tiled layout, in full screen, the arrows go through the windows in order.** Win+Right and Win+Up go to the next window, Win+Left and Win+Down to the one before, wrapping around at the ends, so you don't need to remember where each window sits underneath. A tab group's tabs come one by one, and with Shift the arrows move the focused window one place.
+
 ## 0.11.0 — 2026-10-20
 
 ### New

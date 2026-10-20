@@ -2,6 +2,12 @@
 
 Novedades de cada versión de Glide para Windows. Glide muestra las entradas nuevas una sola vez tras actualizarse, y las notas de cada versión en GitHub salen de aquí. Esta es una traducción de CHANGELOG.md, que es el original.
 
+## 0.11.1 — 2026-10-20
+
+### Cambios
+
+- **En la disposición en mosaico, a pantalla completa las flechas recorren las ventanas en orden.** Win+flecha derecha y Win+flecha arriba pasan a la ventana siguiente, Win+flecha izquierda y Win+flecha abajo a la anterior, y al llegar a un extremo vuelven a empezar, así que no hace falta recordar dónde está cada ventana debajo. Las pestañas de un grupo van de una en una, y con Mayús las flechas mueven la ventana enfocada un puesto.
+
 ## 0.11.0 — 2026-10-20
 
 ### Novedades
