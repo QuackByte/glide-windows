@@ -2,6 +2,12 @@
 
 What's new in each version of Glide for Windows. Glide shows the new entries once after it updates, and each release's notes on GitHub come from here, so write for people using Glide. Add an entry for every change worth knowing about under the next version before tagging it, and translate it in each file of `changelog/` (`CHANGELOG.es.md`, `CHANGELOG.fr.md` and so on, same versions, sections and links): Glide shows the notes in its own language, and a test checks they match this file. The GitHub notes stay English.
 
+## 0.11.0 — 2026-10-20
+
+### New
+
+- **In the tiled layout, Win+Ctrl+F makes the whole workspace full screen.** Every window fills the screen, with the focused one on top, until you press Win+Ctrl+F again. Win+arrows move through the windows without leaving it, and new windows open full screen too.
+
 ## 0.10.2 — 2026-10-19
 
 ### Fixes
