@@ -578,43 +578,69 @@ public class TiledLayoutTests
 
     // Zoom
 
+    private static readonly Rect FullScreen = new(12, 52, 1188, 776);
+
     [Fact]
-    public void FullWidthZoomsTheFocusedTileUntilToggledAgain()
+    public void FullWidthMakesEveryTileFillTheScreenUntilToggledAgain()
     {
         var ws = Make(3, focused: 1);
         var before = Frames(ws);
         Assert.True(ws.Perform(GlideAction.ToggleFullWidth));
-        var zoomed = Frames(ws);
-        Assert.Equal(new Rect(12, 52, 1188, 776), zoomed[2]);
-        Assert.Equal(before[1], zoomed[1]); // The others stay put, underneath
-        Assert.Equal(before[3], zoomed[3]);
+        Assert.True(ws.IsZoomed);
+        Assert.All(Frames(ws).Values, frame => Assert.Equal(FullScreen, frame)); // Every tile fills the screen, stacked
         Assert.True(ws.Perform(GlideAction.ToggleFullWidth));
         Assert.Equal(before, Frames(ws));
     }
 
     [Fact]
-    public void AZoomEndsWhenFocusLeavesAndDoesNotComeBack()
+    public void FocusMovesThroughZoomedTilesAndTheZoomStays()
     {
         var ws = Make(3, focused: 0);
         ws.Perform(GlideAction.ToggleFullWidth);
         Assert.True(ws.Perform(GlideAction.FocusColumnRight));
-        Assert.Null(ws.ZoomedWindow);
-        ws.Perform(GlideAction.FocusColumnLeft);
-        Assert.NotEqual(new Rect(12, 52, 1188, 776), Frames(ws)[1]);
+        Assert.Equal(2, ws.Strip.FocusedWindow);
+        Assert.True(ws.Perform(GlideAction.FocusWindowDown)); // Direction still follows the spiral underneath
+        Assert.Equal(3, ws.Strip.FocusedWindow);
+        Assert.True(ws.Perform(GlideAction.FocusFirstColumn));
+        Assert.Equal(1, ws.Strip.FocusedWindow);
+        Assert.True(ws.IsZoomed);
+        Assert.All(Frames(ws).Values, frame => Assert.Equal(FullScreen, frame));
     }
 
     [Fact]
-    public void AZoomEndsWhenItsWindowLeaves()
+    public void AZoomOutlastsItsWindowsAndCoversNewOnes()
     {
         var set = new WorkspaceSet(Viewport);
         set.Active.LayoutOverride = LayoutMode.Tiled;
         foreach (var id in new[] { 1, 2 }) set.Insert(id, 1);
         set.Active.Perform(GlideAction.ToggleFullWidth);
-        Assert.Equal(2, set.Active.ZoomedWindow);
         set.Remove(2);
-        Assert.Null(set.Active.ZoomedWindow);
-        set.Insert(2, 1);
-        Assert.Equal(new Rect(612, 52, 588, 776), Frames(set.Active)[2]);
+        Assert.True(set.Active.IsZoomed);
+        Assert.Equal(FullScreen, Frames(set.Active)[1]);
+        set.Insert(3, 1);
+        Assert.Equal(FullScreen, Frames(set.Active)[3]);
+        Assert.Equal(3, set.Active.Strip.FocusedWindow);
+    }
+
+    [Fact]
+    public void ZoomedWidthStepsAndResizesDoNothing()
+    {
+        var ws = Make(2);
+        ws.Perform(GlideAction.ToggleFullWidth);
+        Assert.False(ws.Perform(GlideAction.CycleColumnWidth));
+        Assert.False(ws.SetColumnWidthFromResize(1, 400));
+        ws.Perform(GlideAction.ToggleFullWidth);
+        Assert.Equal(Expected(ws), ws.Placements().Select(p => p.Frame).ToList());
+    }
+
+    [Fact]
+    public void ZoomedOnlyTheFocusedTilesTabBarShows()
+    {
+        var ws = new Workspace(new Strip([Col([1, 2], isTabbed: true), Col([3, 4], isTabbed: true)]), Viewport) { LayoutOverride = LayoutMode.Tiled };
+        ws.Perform(GlideAction.ToggleFullWidth);
+        Assert.Equal([0], ws.TabBars().Select(b => b.Column));
+        ws.Perform(GlideAction.FocusColumnRight);
+        Assert.Equal([1], ws.TabBars().Select(b => b.Column));
     }
 
     [Fact]
@@ -867,7 +893,7 @@ public class TiledLayoutTests
         ws.Perform(GlideAction.ToggleFullWidth);
         ws.ToggleLayout();
         ws.ToggleLayout();
-        Assert.Null(ws.ZoomedWindow);
+        Assert.False(ws.IsZoomed);
     }
 
     [Fact]

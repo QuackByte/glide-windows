@@ -27,7 +27,7 @@ Glide takes over the Windows key the way FancyZones' "Override Windows Snap" doe
 | Previous / next workspace | Win+Ctrl+← / → | Switch virtual desktop |
 | Send window to previous / next workspace | Win+Ctrl+Shift+← / → | |
 | Cycle column width (backward); tiled: the split | Win+Ctrl+R (+Shift) | |
-| Toggle full width; tiled: zoom the tile | Win+Ctrl+F | Find computers |
+| Toggle full width; tiled: zoom every tile | Win+Ctrl+F | Find computers |
 | Center column | Win+Ctrl+C | Color filters |
 | Toggle tabbed column | Win+Ctrl+W | |
 | Switch the workspace between scrolling and tiled | Win+Ctrl+T | |
@@ -50,7 +50,7 @@ Win+Ctrl+T switches the current workspace between the scrolling strip and a tile
 - **Order**: tiles follow the strip's columns left to right. Switching to tiled gives every window of a stack its own column (a tabbed column stays one tile, with its tab bar on top); switching back gives every column the default width. The order and focus survive both ways. A new window becomes the next tile after the focused one.
 - **Win+arrows** focus the tile next to the focused one in that direction, and **Win+Shift+arrows** swap it with that neighbour. Win+Home / End focus the first / last tile. Win+[ and ] do nothing.
 - **Win+Ctrl+R** steps the split between the focused tile and the rest through ⅓, ½ and ⅔ (the last tile changes the split before it). Dragging a tile's edge moves the same split. The splits start over when a window opens or closes.
-- **Win+Ctrl+F** zooms the focused tile to fill the screen until you press it again, or move focus away.
+- **Win+Ctrl+F** zooms the workspace: every tile fills the screen, stacked, with the focused one on top, until you press it again. Focus moves through them as before (Win+arrows follow the layout underneath), new windows open zoomed too, and only the focused tab group shows its tab bar. Win+Ctrl+R and dragging an edge do nothing while zoomed.
 - Windows with a minimum width that doesn't fit their tile get that width, overlapping their neighbour if they have to.
 
 ### Rebinding
